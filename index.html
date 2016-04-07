@@ -105,19 +105,20 @@
             for (var x = 0; x < image.width; ++x) {
               for (var y = 0; y < image.height; ++y) {
                 var pixelOffset = (x * 4) + (y * image.width * 4);
+                var opacity = 1.0/255 * imageWrapper.pixels[pixelOffset + 3];
                 var mesh = new THREE.Mesh(
                   rectGeom,
                   new THREE.MeshBasicMaterial({
-                    color: new THREE.Color("rgb(" +
+                    'color': new THREE.Color("rgb(" +
                       imageWrapper.pixels[pixelOffset + 0] + ", " +
                       imageWrapper.pixels[pixelOffset + 1] + ", " +
                       imageWrapper.pixels[pixelOffset + 2] + ")"),
-                    opacity: imageWrapper.pixels[pixelOffset + 3],
-                    transparent: true
+                    'opacity': opacity,
+                    'transparent': true
                   }));
                 mesh.position.x = x;
                 mesh.position.y = window.innerHeight - y;
-                scene.add(mesh)
+                scene.add(mesh);
               }
             }
           });
