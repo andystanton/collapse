@@ -36,36 +36,32 @@
           }
 
           return Promise.all(childPromises).then(function(images) {
+            var returnImages = [];
+            for (var i = 0; i < images.length; ++i) {
+              returnImages = returnImages.concat(images[i])
+            }
+
             if ($(element).hasClass("breakable")) {
               var position = getPosition(element);
-
-              console.log($(element)[0].tagName + " " + $(element)[0].id)
 
               return domtoimage.toSvg($(element)[0]).then(function(dataUrl) {
                 var img = new Image();
                 img.src = dataUrl;
 
-                // earlier items in the array will be drawn first (i.e. lower z order)
-                var returnImages = [{
+                var outImages = [{
                   data: img,
                   position: getPosition($(element))
                 }];
 
-                for (var i = 0; i < images.length; ++i) {
-                  returnImages = returnImages.concat(images[i])
-                }
-
                 $(element).css('visibility','hidden');
 
-                return returnImages;
+                return outImages.concat(returnImages);
               })
             } else {
-              return Promise.resolve(images[0]);
+              return Promise.resolve(returnImages);
             }
           })
-        }
-
-
+        };
 
         disassemble('body').then(function(images) {
           return images.map(function(imageWrapper) {
@@ -76,7 +72,6 @@
             var pixelData = ctx.getImageData(0, 0, image.width, image.height).data;
             svgCanvas.remove();
             imageWrapper.pixels = pixelData;
-            console.log(imageWrapper)
             return imageWrapper;
           });
         }).then(function(images) {
@@ -84,8 +79,10 @@
           var renderer = new THREE.WebGLRenderer({
             alpha: true
           });
+          console.log(images)
 
           var camera = new THREE.OrthographicCamera(0, window.innerWidth, window.innerHeight, 0, 1, 1000);
+
           scene.add(camera);
           renderer.setSize(window.innerWidth, window.innerHeight);
           camera.position.z = 5;
@@ -93,12 +90,14 @@
           var rectLength = 1;
           var rectWidth = 1;
           var rectShape = new THREE.Shape();
+
           rectShape.moveTo(0, 0);
           rectShape.lineTo(0, rectWidth);
           rectShape.lineTo(rectLength, rectWidth);
           rectShape.lineTo(rectLength, 0);
           rectShape.lineTo(0, 0);
-          rectGeom = new THREE.ShapeGeometry(rectShape);
+
+          var rectGeom = new THREE.ShapeGeometry(rectShape);
 
           images.forEach(function(imageWrapper) {
             var image = imageWrapper.data;
@@ -116,8 +115,8 @@
                     'opacity': opacity,
                     'transparent': true
                   }));
-                mesh.position.x = x;
-                mesh.position.y = window.innerHeight - y;
+                mesh.position.x = imageWrapper.position.left + x;
+                mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
                 scene.add(mesh);
               }
             }
@@ -141,6 +140,13 @@
       height: 100px;
       text-align: center;
       background-color: #6666CC;
+    }
+
+    .container-right {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      background-color: #CC1111;
     }
 
     .other {
@@ -179,6 +185,9 @@
   </div>
   <div class="other">
     hello!
+  </div>
+  <div class="container-right breakable">
+    oh!
   </div>
 </body>
 
