@@ -115,7 +115,9 @@
                             });
                         }
                         return materials[rgbaName];
-                    }
+                    };
+
+                    var meshes = {};
 
                     images.forEach(function(imageWrapper) {
                         var image = imageWrapper.data;
@@ -134,15 +136,58 @@
                                     mesh.position.x = imageWrapper.position.left + x;
                                     mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
                                     scene.add(mesh);
+                                    meshes[mesh.id] = {
+                                        direction: new THREE.Vector2(0, 0)
+                                    };
                                 }
                             }
                         }
                     });
 
+                    var started = false;
                     var render = function() {
                         requestAnimationFrame(render);
+
+                        if (started) {
+                            scene.traverse(function(node) {
+                                if (node instanceof THREE.Mesh) {
+                                    var obj = meshes[node.id];
+                                    node.position.x += obj.direction.x;
+                                    node.position.y += obj.direction.y;
+                                    obj.direction.y -= 4;
+                                    obj.direction.x *= 0.95;
+                                    if (node.position.y < 0) {
+                                        node.position.y = 0;
+                                        obj.direction.y = -obj.direction.y * 0.2;
+                                        obj.direction.x *= 0.9;
+                                    }
+                                    if (node.position.x < 0) {
+                                        node.position.x = 0;
+                                        obj.direction.x = -obj.direction.x;
+                                    }
+                                    if (node.position.x >= window.innerWidth) {
+                                        node.position.x = window.innerWidth - 1;
+                                        obj.direction.x = -obj.direction.x;
+                                    }
+                                }
+                            });
+                        }
+
                         renderer.render(scene, camera);
                     };
+
+
+                    $(renderer.domElement).click(function(event) {
+                        console.log("starting simulation")
+                        scene.traverse(function(node) {
+                            if (node instanceof THREE.Mesh) {
+                                var obj = meshes[node.id];
+                                obj.direction.y = (Math.random() * 30) + 1;
+                                obj.direction.x = (Math.random() * 50) - 25;
+                            }
+                        })
+                        started = true;
+                    })
 
                     render();
                     console.log("READY");
