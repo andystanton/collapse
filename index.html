@@ -25,7 +25,7 @@
               right: rightPos,
               top: topPos,
               bottom: bottomPos
-            }
+            };
           }
 
           var childPromises = [];
@@ -38,7 +38,7 @@
           return Promise.all(childPromises).then(function(images) {
             var returnImages = [];
             for (var i = 0; i < images.length; ++i) {
-              returnImages = returnImages.concat(images[i])
+              returnImages = returnImages.concat(images[i]);
             }
 
             if ($(element).hasClass("breakable")) {
@@ -60,18 +60,22 @@
             } else {
               return Promise.resolve(returnImages);
             }
-          })
+          });
         };
 
         disassemble('body').then(function(images) {
           return images.map(function(imageWrapper) {
             var image = imageWrapper.data;
             var svgCanvas = $('<canvas>');
+
             var ctx = svgCanvas[0].getContext('2d');
             ctx.drawImage(image, 0, 0, image.width, image.height);
+
             var pixelData = ctx.getImageData(0, 0, image.width, image.height).data;
-            svgCanvas.remove();
             imageWrapper.pixels = pixelData;
+
+            svgCanvas.remove();
+
             return imageWrapper;
           });
         }).then(function(images) {
@@ -79,7 +83,6 @@
           var renderer = new THREE.WebGLRenderer({
             alpha: true
           });
-          console.log(images)
 
           var camera = new THREE.OrthographicCamera(0, window.innerWidth, window.innerHeight, 0, 1, 1000);
 
@@ -105,19 +108,23 @@
               for (var y = 0; y < image.height; ++y) {
                 var pixelOffset = (x * 4) + (y * image.width * 4);
                 var opacity = 1.0/255 * imageWrapper.pixels[pixelOffset + 3];
-                var mesh = new THREE.Mesh(
-                  rectGeom,
-                  new THREE.MeshBasicMaterial({
-                    'color': new THREE.Color("rgb(" +
-                      imageWrapper.pixels[pixelOffset + 0] + ", " +
-                      imageWrapper.pixels[pixelOffset + 1] + ", " +
-                      imageWrapper.pixels[pixelOffset + 2] + ")"),
-                    'opacity': opacity,
-                    'transparent': true
-                  }));
-                mesh.position.x = imageWrapper.position.left + x;
-                mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
-                scene.add(mesh);
+                if (opacity > 0) {
+                  var mesh = new THREE.Mesh(
+                    rectGeom,
+                    new THREE.MeshBasicMaterial({
+                      'color': new THREE.Color("rgb(" +
+                        imageWrapper.pixels[pixelOffset + 0] + ", " +
+                        imageWrapper.pixels[pixelOffset + 1] + ", " +
+                        imageWrapper.pixels[pixelOffset + 2] + ")"),
+                      'opacity': opacity,
+                      'transparent': true
+                    }));
+                  mesh.position.x = imageWrapper.position.left + x;
+                  mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
+                  scene.add(mesh);
+                } else {
+                  droppedCount++;
+                }
               }
             }
           });
@@ -128,7 +135,7 @@
           };
 
           render();
-          console.log("READY")
+          console.log("READY");
           $('body').append(renderer.domElement);
         });
       });
