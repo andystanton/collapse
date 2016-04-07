@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "img": "^3.0.3",
-    "pngjs": "^2.2.0"
+    "dom-to-image": "git+https://git@github.com/tsayen/dom-to-image.git",
+    "jquery": "^2.2.3"
   }
 }

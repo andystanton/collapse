@@ -1,3 +1,57 @@
 <html>
 
+<head>
+  <script type="text/javascript" src="node_modules/jquery/dist/jquery.min.js"></script>
+  <script type="text/javascript" src="node_modules/dom-to-image/dist/dom-to-image.min.js"></script>
+  <script type="text/javascript">
+    $(document).ready(function() {
+
+      domtoimage.toSvg($('body')[0])
+        .then(function(dataUrl) {
+          // convert body to svg
+          var rawSvg = dataUrl.replace('data:image/svg+xml;charset=utf-8,', '');
+
+          // parse svg into dom
+          var parser = new DOMParser();
+          var svgContents = parser.parseFromString(rawSvg, "image/svg+xml");
+
+          // test ability to update svg dom
+          var containerElement = $(svgContents).find(".container-box")[0];
+          containerElement.style.backgroundColor = '#209999';
+
+          // construct new data url from modified svg
+          var newUrl = 'data:image/svg+xml;charset=utf-8,' + svgContents.documentElement.outerHTML;
+
+          // create Image using new data url
+          var img = new Image();
+          img.src = newUrl;
+
+          // replace the body with the new image
+          $('body').replaceWith(img)
+        })
+        .catch(function(error) {
+          console.error('oops, something went wrong!', error);
+        });
+    });
+  </script>
+  <style type="text/css">
+    .container-box {
+      width: 200px;
+      height: 100px;
+      text-align: center;
+      background-color: #CC99CC;
+    }
+
+    #foo {
+      vertical-align: middle;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="container" class="container-box">
+    <div id="foo">foo!</foo>
+    </div>
+</body>
+
 </html>
