@@ -3,7 +3,17 @@
 <head>
   <script type="text/javascript" src="node_modules/jquery/dist/jquery.min.js"></script>
   <script type="text/javascript" src="node_modules/dom-to-image/dist/dom-to-image.min.js"></script>
+  <script type="text/javascript" src="node_modules/three/three.min.js"></script>
   <script type="text/javascript">
+    var worker = new Worker('worker.js');
+    var scene = new THREE.Scene();
+    var renderer = new THREE.WebGLRenderer();
+    var pixels = {};
+
+    worker.onmessage = function(message) {
+
+    }
+
     $(document).ready(function() {
       domtoimage.toSvg($('html')[0])
         .then(function(dataUrl) {
@@ -26,24 +36,143 @@
           img.src = newUrl;
 
           // create a canvas
-          var canvas = $('<canvas>')
-          canvas[0].width = img.width;
-          canvas[0].height = img.width;
+          var svgCanvas = $('<canvas>')
+          svgCanvas[0].width = img.width;
+          svgCanvas[0].height = img.height;
 
           // get the canvas' 2d context
-          var ctx = canvas[0].getContext('2d');
+          var ctx = svgCanvas[0].getContext('2d');
 
           // draw the image on the canvas
           ctx.drawImage(img, 0, 0, img.width, img.height);
 
           // access pixel data
-          canvas.click(function(event) {
+          svgCanvas.click(function(event) {
+            console.log(event.offsetX + ", " + event.offsetY);
             console.log(ctx.getImageData(event.offsetX, event.offsetY, 1, 1).data);
           });
 
           // remove all elements from the body and replace with the canvas
           $('body').empty();
-          $('body').append(canvas);
+          $('body').append(svgCanvas);
+
+          // create a new three js orthographic scene
+
+          var camera = new THREE.OrthographicCamera(0, img.width, img.height, 0, 1, 1000);
+          scene.add(camera);
+
+          var pixelData = ctx.getImageData(0, 0, img.width, img.height).data;
+
+
+          renderer.setSize(window.innerWidth, window.innerHeight);
+
+          camera.position.z = 5;
+
+          var started = false;
+          var pixelCount = img.width * img.height;
+
+
+          var render = function() {
+            requestAnimationFrame(render);
+            if (started) {
+              // console.log(Object.keys(pixels).length)
+              scene.traverse(function(node) {
+                if (node instanceof THREE.Mesh) {
+                  var obj = pixels[node.id];
+
+                  node.position.x += obj.direction.x;
+                  node.position.y += obj.direction.y;
+
+                  obj.direction.y -= 4;
+                  obj.direction.x *= 0.95;
+
+                  if (node.position.y < 0) {
+                    node.position.y = 0;
+                    obj.direction.y = -obj.direction.y * 0.2;
+                    obj.direction.x *= 0.9;
+                  }
+
+                  if (node.position.x < 0) {
+                    node.position.x = 0;
+                    obj.direction.x = -obj.direction.x;
+                  }
+
+                  if (node.position.x >= img.width) {
+                    node.position.x = img.width - 1;
+                    obj.direction.x = -obj.direction.x;
+                  }
+
+                }
+              });
+            }
+            renderer.render(scene, camera);
+          };
+
+
+          var rectLength = 1,
+            rectWidth = 1;
+
+          rectShape = new THREE.Shape();
+          rectShape.moveTo(0, 0);
+          rectShape.lineTo(0, rectWidth);
+          rectShape.lineTo(rectLength, rectWidth);
+          rectShape.lineTo(rectLength, 0);
+          rectShape.lineTo(0, 0);
+
+          rectGeom = new THREE.ShapeGeometry(rectShape);
+
+          var materials = [];
+
+          var getMaterial = function(r, g, b) {
+            var rgbName = "" + r + "," + g + "," + b;
+            if (!materials[rgbName]) {
+              materials[rgbName] = new THREE.MeshBasicMaterial({
+                color: new THREE.Color("rgb(" + rgbName + ")")
+              });
+            }
+            return materials[rgbName];
+          }
+
+          var pixelId = 0;
+
+          for (var x = 0; x < img.width; ++x) {
+            for (var y = 0; y < img.height; ++y) {
+              var pixelOffset = (x * 4) + (y * img.width * 4);
+              // console.log(pixelOffset)
+              var mesh = new THREE.Mesh(
+                rectGeom,
+                getMaterial(
+                  pixelData[pixelOffset + 0],
+                  pixelData[pixelOffset + 1],
+                  pixelData[pixelOffset + 2]));
+              mesh.position.x = x;
+              mesh.position.y = img.height - y;
+              pixels[mesh.id] = {
+                direction: new THREE.Vector2(0, 0)
+              }
+              scene.add(mesh)
+            }
+          }
+
+          $(renderer.domElement).click(function(event) {
+            console.log("starting simulation")
+
+
+            scene.traverse(function(node) {
+              if (node instanceof THREE.Mesh) {
+                var obj = pixels[node.id];
+                obj.direction.y = (Math.random() * 10) + 1;
+                obj.direction.x = (Math.random() * 10) - 4;
+              }
+            })
+            started = true;
+          })
+
+          render();
+          console.log("READY")
+
+          $('body').empty();
+          $('body').append(renderer.domElement);
         })
         .catch(function(error) {
           console.error('oops, something went wrong!', error);
@@ -64,11 +193,18 @@
 
     html {
       height: 100%;
+      margin: 0;
     }
 
     body {
+      margin: 0;
       min-height: 100%;
       background-color: #EEEEEE;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
     }
   </style>
 </head>
