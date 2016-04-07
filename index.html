@@ -5,8 +5,7 @@
   <script type="text/javascript" src="node_modules/dom-to-image/dist/dom-to-image.min.js"></script>
   <script type="text/javascript">
     $(document).ready(function() {
-
-      domtoimage.toSvg($('body')[0])
+      domtoimage.toSvg($('html')[0])
         .then(function(dataUrl) {
           // convert body to svg
           var rawSvg = dataUrl.replace('data:image/svg+xml;charset=utf-8,', '');
@@ -26,8 +25,25 @@
           var img = new Image();
           img.src = newUrl;
 
-          // replace the body with the new image
-          $('body').replaceWith(img)
+          // create a canvas
+          var canvas = $('<canvas>')
+          canvas[0].width = img.width;
+          canvas[0].height = img.width;
+
+          // get the canvas' 2d context
+          var ctx = canvas[0].getContext('2d');
+
+          // draw the image on the canvas
+          ctx.drawImage(img, 0, 0, img.width, img.height);
+
+          // access pixel data
+          canvas.click(function(event) {
+            console.log(ctx.getImageData(event.offsetX, event.offsetY, 1, 1).data);
+          });
+
+          // remove all elements from the body and replace with the canvas
+          $('body').empty();
+          $('body').append(canvas);
         })
         .catch(function(error) {
           console.error('oops, something went wrong!', error);
@@ -44,6 +60,15 @@
 
     #foo {
       vertical-align: middle;
+    }
+
+    html {
+      height: 100%;
+    }
+
+    body {
+      min-height: 100%;
+      background-color: #EEEEEE;
     }
   </style>
 </head>
