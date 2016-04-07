@@ -63,63 +63,43 @@
       }
 
       disassemble('body', true).then(function(images) {
-        console.log(images)
-        images.forEach(function(image) {
-          // console.log(image.position.left)
-          $('body').append(image.data)
-        })
+        var scene = new THREE.Scene();
+        var renderer = new THREE.WebGLRenderer({
+          alpha: true
+        });
+
+        var camera = new THREE.OrthographicCamera(0, window.innerWidth, window.innerHeight, 0, 1, 1000);
+        scene.add(camera);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.position.z = 5;
+
+        var rectLength = 200;
+        var rectWidth = 100;
+        var rectShape = new THREE.Shape();
+        rectShape.moveTo(0, 0);
+        rectShape.lineTo(0, rectWidth);
+        rectShape.lineTo(rectLength, rectWidth);
+        rectShape.lineTo(rectLength, 0);
+        rectShape.lineTo(0, 0);
+        rectGeom = new THREE.ShapeGeometry(rectShape);
+
+        var mesh = new THREE.Mesh(
+          rectGeom,
+          new THREE.MeshBasicMaterial({
+            color: new THREE.Color("rgb(255,0,0)")
+          }));
+        scene.add(mesh);
+
+        var render = function() {
+          requestAnimationFrame(render);
+          renderer.render(scene, camera);
+        };
+
+        render();
+        console.log("READY")
+        $('body').append(renderer.domElement);
       });
 
-      //
-      // domtoimage.toSvg($('body')[0], {
-      //     filter: function(node) {
-      //       if ($(node).hasClass("breakable")) {
-      //         var leftPos  = $(node)[0].getBoundingClientRect().left   + $(window)['scrollLeft']();
-      //         var rightPos = $(node)[0].getBoundingClientRect().right  + $(window)['scrollLeft']();
-      //         var topPos   = $(node)[0].getBoundingClientRect().top    + $(window)['scrollTop']();
-      //         var bottomPos= $(node)[0].getBoundingClientRect().bottom + $(window)['scrollTop']();
-      //         console.log(leftPos);
-      //         console.log(rightPos);
-      //         console.log(topPos);
-      //         console.log(bottomPos);
-      //       }
-      //       return $(node).hasClass("breakable");
-      //     }
-      //   })
-      //   .then(function(dataUrl) {
-      //     // convert body to svg
-      //     var rawSvg = dataUrl.replace('data:image/svg+xml;charset=utf-8,', '');
-      //
-      //     // parse svg into dom
-      //     var parser = new DOMParser();
-      //     var svgContents = parser.parseFromString(rawSvg, "image/svg+xml");
-      //     console.log(svgContents)
-      //
-      //     // test ability to update svg dom
-      //     // var containerElement = $(svgContents).find(".container-box")[0];
-      //     // containerElement.style.backgroundColor = '#209999';
-      //
-      //     // construct new data url from modified svg
-      //     var newUrl = 'data:image/svg+xml;charset=utf-8,' + svgContents.documentElement.outerHTML;
-      //
-      //     // create Image using new data url
-      //     var img = new Image();
-      //     img.src = newUrl;
-      //
-      //     // create a canvas
-      //     var svgCanvas = $('<canvas>')
-      //     svgCanvas[0].width = img.width;
-      //     svgCanvas[0].height = img.height;
-      //
-      //     // get the canvas' 2d context
-      //     var ctx = svgCanvas[0].getContext('2d');
-      //
-      //     // draw the image on the canvas
-      //     ctx.drawImage(img, 0, 0, img.width, img.height);
-      //   })
-      //   .catch(function(error) {
-      //     console.error('oops, something went wrong!', error);
-      //   });
     });
   </script>
   <style type="text/css">
@@ -153,6 +133,9 @@
     canvas {
       width: 100%;
       height: 100%;
+      z-index: 2;
+      position: absolute;
+      top: 0px;
     }
   </style>
 </head>
