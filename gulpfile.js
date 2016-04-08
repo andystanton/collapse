@@ -7,7 +7,7 @@ gulp.task('copy-js', function() {
             'node_modules/dom-to-image/dist/dom-to-image.min.js',
             'node_modules/three/three.min.js'
         ])
-        .pipe(gulp.dest('./app/js'));
+        .pipe(gulp.dest('./public/js'));
 });
 
 gulp.task('build-js', function() {
@@ -18,7 +18,7 @@ gulp.task('build-js', function() {
         .pipe(babel({
             presets: ['es2015']
         }))
-        .pipe(gulp.dest('./app/js'));
+        .pipe(gulp.dest('./public/js'));
 });
 
 
