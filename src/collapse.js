@@ -90,11 +90,11 @@ const setupScene = images => {
     const materials = {};
 
     const getMaterial = (r, g, b, a) => {
-        const rgbName = "" + r + "," + g + "," + b;
-        const rgbaName = rgbName + "," + a;
+        const rgbName = `${r},${g},${b}`;
+        const rgbaName = `${rgbName},${a}`;
         if (!materials[rgbaName]) {
             return new THREE.MeshBasicMaterial({
-                'color': new THREE.Color("rgb(" + rgbName + ")"),
+                'color': new THREE.Color(`rgb(${rgbName})`),
                 'opacity': a,
                 'transparent': a > 0
             });

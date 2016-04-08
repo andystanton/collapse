@@ -1,13 +1,11 @@
 importScripts('./three.min.js');
 
-onmessage = function(message) {
+onmessage = message => {
+    const data = message.data;
 
-  var data = message.data;
-
-  //  now send back the results
-  postMessage({
-      width: data.width,
-      height: data.height,
-      pixelData: data.pixelData
-  })
+    postMessage({
+        width: data.width,
+        height: data.height,
+        pixelData: data.pixelData
+    })
 }

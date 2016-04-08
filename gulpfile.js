@@ -1,7 +1,7 @@
 const gulp = require('gulp');
 const babel = require('gulp-babel');
 
-gulp.task('copy-js', function() {
+gulp.task('copy-js', () => {
     gulp.src([
             'node_modules/jquery/dist/jquery.min.js',
             'node_modules/dom-to-image/dist/dom-to-image.min.js',
@@ -10,7 +10,7 @@ gulp.task('copy-js', function() {
         .pipe(gulp.dest('./public/js'));
 });
 
-gulp.task('build-js', function() {
+gulp.task('build-js', () => {
     gulp.src([
             'src/worker.js',
             'src/collapse.js'
@@ -20,6 +20,5 @@ gulp.task('build-js', function() {
         }))
         .pipe(gulp.dest('./public/js'));
 });
-
 
 gulp.task('default', ['copy-js', 'build-js']);
