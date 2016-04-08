@@ -15,6 +15,7 @@
     "dom-to-image": "git+https://git@github.com/tsayen/dom-to-image.git",
     "express": "^4.13.4",
     "jquery": "^2.2.3",
+    "socket.io": "^1.4.5",
     "three": "^0.75.0"
   },
   "devDependencies": {

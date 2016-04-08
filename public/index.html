@@ -7,13 +7,33 @@
     <script type="text/javascript" src="js/dom-to-image.min.js"></script>
     <script type="text/javascript" src="js/three.min.js"></script>
     <script type="text/javascript" src="js/collapse.js"></script>
+    <script type="text/javascript" src="js/socket.io.js"></script>
     <script type="text/javascript">
         var enable = true;
+        // var socket = io();
 
         if (enable) {
+            // socket.on('updates', function(message) {
+            //     meshes = message.meshes;
+            //
+            //     socket.emit('kickoff', {
+            //         'meshes': meshes,
+            //         'window': {
+            //             'width': window.innerWidth,
+            //             'height': window.innerHeight
+            //         }
+            //     });
+            // });
+
             var worker = new Worker('js/worker.js');
             worker.onmessage = function(message) {
-
+                Object.keys(message.data).forEach(meshId => {
+                    const obj = message.data[meshId];
+                    if (scene.getObjectById(meshId)) {
+                      scene.getObjectById(meshId).position.x = obj.position.x;
+                      scene.getObjectById(meshId).position.y = obj.position.y;
+                    }
+                });
             }
 
             $(window).load(function() {

@@ -1,0 +1,34 @@
+<html>
+
+<head>
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/dom-to-image.min.js"></script>
+    <script type="text/javascript" src="js/collapse.js"></script>
+    <script type="text/javascript">
+        $(window).load(function() {
+            var render = function(node) {
+              domtoimage.toPng(node)
+                  .then(function(dataUrl) {
+                      var img = new Image();
+                      img.src = dataUrl;
+                      $('#out').append(img);
+                  })
+                  .catch(function(error) {
+                      console.error('oops, something went wrong!', error);
+                  });
+            }
+            var foo = document.getElementById('foo');
+            var bar = document.getElementById('bar');
+            render(foo);
+            render(bar)
+        });
+    </script>
+</head>
+
+<body>
+    <div id="foo">foo</div>
+    <div id="bar" style="position: absolute; right: 0">bar</div>
+    <div id="out"></div>
+</body>
+
+</html>

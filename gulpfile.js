@@ -5,7 +5,8 @@ gulp.task('copy-js', () => {
     gulp.src([
             'node_modules/jquery/dist/jquery.min.js',
             'node_modules/dom-to-image/dist/dom-to-image.min.js',
-            'node_modules/three/three.min.js'
+            'node_modules/three/three.min.js',
+            'node_modules/socket.io-client/socket.io.js'
         ])
         .pipe(gulp.dest('./public/js'));
 });

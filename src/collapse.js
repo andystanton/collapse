@@ -1,3 +1,6 @@
+var meshes = {};
+var scene;
+
 const disassemble = element => {
     const getPosition = element => {
         const leftPos = $(element)[0].getBoundingClientRect().left + $(window)['scrollLeft']();
@@ -69,7 +72,7 @@ const addPixels = images =>
     });
 
 const setupScene = images => {
-    const scene = new THREE.Scene();
+    scene = new THREE.Scene();
     const renderer = new THREE.WebGLRenderer({
         alpha: true
     });
@@ -107,8 +110,6 @@ const setupScene = images => {
         return materials[rgbaName];
     };
 
-    const meshes = {};
-
     images.forEach(imageWrapper => {
         const image = imageWrapper.data;
         for (let x = 0; x < imageWrapper.width; ++x) {
@@ -127,7 +128,14 @@ const setupScene = images => {
                     mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
                     scene.add(mesh);
                     meshes[mesh.id] = {
-                        direction: new THREE.Vector2(0, 0)
+                        position: {
+                            x: mesh.position.x,
+                            y: mesh.position.y
+                        },
+                        direction: {
+                            x: 0,
+                            y: 0
+                        }
                     };
                 }
             }
@@ -137,14 +145,12 @@ const setupScene = images => {
     return {
         'camera': camera,
         'scene': scene,
-        'renderer': renderer,
-        'meshes': meshes
+        'renderer': renderer
     };
 };
 
 const handleScene = sceneData => {
     const scene = sceneData.scene;
-    const meshes = sceneData.meshes;
     const camera = sceneData.camera;
     const renderer = sceneData.renderer;
 
@@ -153,33 +159,14 @@ const handleScene = sceneData => {
         requestAnimationFrame(render);
 
         if (started) {
-            scene.traverse(node => {
-                if (node instanceof THREE.Mesh) {
-                    const obj = meshes[node.id];
-
-                    node.position.x += obj.direction.x;
-                    node.position.y += obj.direction.y;
-
-                    obj.direction.y -= 4;
-                    obj.direction.x *= 0.95;
-
-                    if (node.position.y < 0) {
-                        node.position.y = 0;
-                        obj.direction.y = -obj.direction.y * 0.2;
-                        obj.direction.x *= 0.9;
-                    }
-
-                    if (node.position.x < 0) {
-                        node.position.x = 0;
-                        obj.direction.x = -obj.direction.x;
-                    }
-
-                    if (node.position.x >= window.innerWidth) {
-                        node.position.x = window.innerWidth - 1;
-                        obj.direction.x = -obj.direction.x;
-                    }
-                }
-            });
+            // scene.traverse(node => {
+            //     if (node instanceof THREE.Mesh) {
+            //         const obj = meshes[node.id];
+            //
+            //         node.position.x = obj.position.x;
+            //         node.position.y = obj.position.y;
+            //     }
+            // });
         }
 
         renderer.render(scene, camera);
@@ -195,6 +182,23 @@ const handleScene = sceneData => {
                 obj.direction.x = (Math.random() * 50) - 25;
             }
         });
+
+        // socket.emit('kickoff', {
+        //     'meshes': meshes,
+        //     'window': {
+        //         'width': window.innerWidth,
+        //         'height': window.innerHeight
+        //     }
+        // });
+
+        worker.postMessage({
+            'meshes': meshes,
+            'window': {
+                'width': window.innerWidth,
+                'height': window.innerHeight
+            }
+        });
+
         started = true;
     });
 
@@ -202,4 +206,5 @@ const handleScene = sceneData => {
     $('body').append(renderer.domElement);
 
     render();
+    return meshes;
 };
