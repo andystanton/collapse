@@ -1,5 +1,9 @@
 {
-    "parserOptions": {
-        "ecmaVersion": 6
-    }
+  "parserOptions": {
+    "ecmaVersion": 6
+  },
+  "rules": {
+    "no-extra-semi": 2,
+    "semi": [2, "always"]
+  }
 }

@@ -4,13 +4,14 @@ const disassemble = element => {
         const rightPos = $(element)[0].getBoundingClientRect().right + $(window)['scrollLeft']();
         const topPos = $(element)[0].getBoundingClientRect().top + $(window)['scrollTop']();
         const bottomPos = $(element)[0].getBoundingClientRect().bottom + $(window)['scrollTop']();
+
         return {
             left: leftPos,
             right: rightPos,
             top: topPos,
             bottom: bottomPos
         };
-    }
+    };
 
     const childPromises = [];
     if ($(element).find('.breakable').length) {
@@ -20,48 +21,52 @@ const disassemble = element => {
     }
 
     return Promise.all(childPromises)
-        .then(images => {
-            var returnImages = [];
-            for (let i = 0; i < images.length; ++i) {
-                returnImages = returnImages.concat(images[i]);
-            }
+        .then(images =>
+            new Promise(resolve => {
+                var returnImages = [];
+                for (let i = 0; i < images.length; ++i) {
+                    returnImages = returnImages.concat(images[i]);
+                }
 
-            if ($(element).hasClass("breakable")) {
-                const position = getPosition(element);
+                if ($(element).hasClass("breakable")) {
+                    const position = getPosition(element);
 
-                return domtoimage.toSvg($(element)[0]).then(dataUrl => {
-                    const img = new Image();
-                    img.src = dataUrl;
+                    domtoimage.toSvg($(element)[0]).then(dataUrl => {
+                        const image = new Image();
+                        image.src = dataUrl;
 
-                    const outImages = [{
-                        data: img,
-                        position: getPosition($(element))
-                    }];
+                        image.onload = () => {
+                            const outImages = [{
+                                data: image,
+                                width: $(element).width(),
+                                height: $(element).height(),
+                                position: getPosition($(element))
+                            }];
 
-                    $(element).css('visibility', 'hidden');
-
-                    return outImages.concat(returnImages);
-                })
-            } else {
-                return Promise.resolve(returnImages);
-            }
-        });
+                            console.log("resolving");
+                            resolve(outImages.concat(returnImages));
+                        };
+                    });
+                } else {
+                    resolve(returnImages);
+                }
+            })
+        );
 };
 
-const addPixels = images => images.map(imageWrapper => {
-    const image = imageWrapper.data;
-    const svgCanvas = $('<canvas>');
+const addPixels = images =>
+    images.map(imageWrapper => {
+        const svgCanvas = $('<canvas>');
+        const ctx = svgCanvas[0].getContext('2d');
 
-    const ctx = svgCanvas[0].getContext('2d');
-    ctx.drawImage(image, 0, 0, image.width, image.height);
+        ctx.drawImage(imageWrapper.data, 0, 0);
 
-    const pixelData = ctx.getImageData(0, 0, image.width, image.height).data;
-    imageWrapper.pixels = pixelData;
+        const pixelData = ctx.getImageData(0, 0, imageWrapper.width, imageWrapper.height).data;
+        imageWrapper.pixels = pixelData;
 
-    svgCanvas.remove();
-
-    return imageWrapper;
-});
+        svgCanvas.remove();
+        return imageWrapper;
+    });
 
 const setupScene = images => {
     const scene = new THREE.Scene();
@@ -106,9 +111,9 @@ const setupScene = images => {
 
     images.forEach(imageWrapper => {
         const image = imageWrapper.data;
-        for (let x = 0; x < image.width; ++x) {
-            for (let y = 0; y < image.height; ++y) {
-                const pixelOffset = (x * 4) + (y * image.width * 4);
+        for (let x = 0; x < imageWrapper.width; ++x) {
+            for (let y = 0; y < imageWrapper.height; ++y) {
+                const pixelOffset = (x * 4) + (y * imageWrapper.width * 4);
                 const opacity = 1.0 / 255 * imageWrapper.pixels[pixelOffset + 3];
                 if (opacity > 0) {
                     const mesh = new THREE.Mesh(
@@ -134,8 +139,8 @@ const setupScene = images => {
         'scene': scene,
         'renderer': renderer,
         'meshes': meshes
-    }
-}
+    };
+};
 
 const handleScene = sceneData => {
     const scene = sceneData.scene;
@@ -182,18 +187,19 @@ const handleScene = sceneData => {
 
 
     $(renderer.domElement).click(event => {
-        console.log("starting simulation")
+        console.log("starting simulation");
         scene.traverse(node => {
             if (node instanceof THREE.Mesh) {
                 const obj = meshes[node.id];
                 obj.direction.y = (Math.random() * 30) + 1;
                 obj.direction.x = (Math.random() * 50) - 25;
             }
-        })
+        });
         started = true;
     });
 
+    $('.breakable').css('visibility', 'hidden');
     $('body').append(renderer.domElement);
 
     render();
-}
+};

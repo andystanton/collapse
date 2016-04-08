@@ -21,4 +21,8 @@ gulp.task('build-js', () => {
         .pipe(gulp.dest('./public/js'));
 });
 
+gulp.task('watch', () => {
+  gulp.watch(['src/*.js'], ['build-js']);
+});
+
 gulp.task('default', ['copy-js', 'build-js']);

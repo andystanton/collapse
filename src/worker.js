@@ -7,5 +7,5 @@ onmessage = message => {
         width: data.width,
         height: data.height,
         pixelData: data.pixelData
-    })
-}
+    });
+};
