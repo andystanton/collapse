@@ -15,22 +15,7 @@
             }
 
             $(window).load(function() {
-              disassemble('body').then(function(images) {
-                  return images.map(function(imageWrapper) {
-                      var image = imageWrapper.data;
-                      var svgCanvas = $('<canvas>');
-
-                      var ctx = svgCanvas[0].getContext('2d');
-                      ctx.drawImage(image, 0, 0, image.width, image.height);
-
-                      var pixelData = ctx.getImageData(0, 0, image.width, image.height).data;
-                      imageWrapper.pixels = pixelData;
-
-                      svgCanvas.remove();
-
-                      return imageWrapper;
-                  });
-              }).then(function(images) {
+              disassemble('body').then(addPixels).then(function(images) {
                   var scene = new THREE.Scene();
                   var renderer = new THREE.WebGLRenderer({
                       alpha: true
