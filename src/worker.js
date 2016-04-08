@@ -1,4 +1,4 @@
-importScripts('node_modules/three/three.js');
+importScripts('./three.min.js');
 
 onmessage = function(message) {
 

@@ -1,0 +1,208 @@
+<html>
+
+<head>
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/dom-to-image.min.js"></script>
+    <script type="text/javascript" src="js/three.min.js"></script>
+    <script type="text/javascript" src="js/collapse.js"></script>
+    <script type="text/javascript">
+        var enable = true;
+
+        if (enable) {
+            var worker = new Worker('js/worker.js');
+            worker.onmessage = function(message) {
+
+            }
+
+            $(window).load(function() {
+              disassemble('body').then(function(images) {
+                  return images.map(function(imageWrapper) {
+                      var image = imageWrapper.data;
+                      var svgCanvas = $('<canvas>');
+
+                      var ctx = svgCanvas[0].getContext('2d');
+                      ctx.drawImage(image, 0, 0, image.width, image.height);
+
+                      var pixelData = ctx.getImageData(0, 0, image.width, image.height).data;
+                      imageWrapper.pixels = pixelData;
+
+                      svgCanvas.remove();
+
+                      return imageWrapper;
+                  });
+              }).then(function(images) {
+                  var scene = new THREE.Scene();
+                  var renderer = new THREE.WebGLRenderer({
+                      alpha: true
+                  });
+
+                  var camera = new THREE.OrthographicCamera(0, window.innerWidth, window.innerHeight, 0, 1, 1000);
+
+                  scene.add(camera);
+                  renderer.setSize(window.innerWidth, window.innerHeight);
+                  camera.position.z = 5;
+
+                  var rectLength = 1;
+                  var rectWidth = 1;
+                  var rectShape = new THREE.Shape();
+
+                  rectShape.moveTo(0, 0);
+                  rectShape.lineTo(0, rectWidth);
+                  rectShape.lineTo(rectLength, rectWidth);
+                  rectShape.lineTo(rectLength, 0);
+                  rectShape.lineTo(0, 0);
+
+                  var rectGeom = new THREE.ShapeGeometry(rectShape);
+
+                  var materials = {};
+
+                  var getMaterial = function(r, g, b, a) {
+                      var rgbName = "" + r + "," + g + "," + b;
+                      var rgbaName = rgbName + "," + a;
+                      if (!materials[rgbaName]) {
+                          return new THREE.MeshBasicMaterial({
+                              'color': new THREE.Color("rgb(" + rgbName + ")"),
+                              'opacity': a,
+                              'transparent': a > 0
+                          });
+                      }
+                      return materials[rgbaName];
+                  };
+
+                  var meshes = {};
+
+                  images.forEach(function(imageWrapper) {
+                      var image = imageWrapper.data;
+                      for (var x = 0; x < image.width; ++x) {
+                          for (var y = 0; y < image.height; ++y) {
+                              var pixelOffset = (x * 4) + (y * image.width * 4);
+                              var opacity = 1.0 / 255 * imageWrapper.pixels[pixelOffset + 3];
+                              if (opacity > 0) {
+                                  var mesh = new THREE.Mesh(
+                                      rectGeom,
+                                      getMaterial(
+                                          imageWrapper.pixels[pixelOffset + 0],
+                                          imageWrapper.pixels[pixelOffset + 1],
+                                          imageWrapper.pixels[pixelOffset + 2],
+                                          opacity));
+                                  mesh.position.x = imageWrapper.position.left + x;
+                                  mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
+                                  scene.add(mesh);
+                                  meshes[mesh.id] = {
+                                      direction: new THREE.Vector2(0, 0)
+                                  };
+                              }
+                          }
+                      }
+                  });
+
+                  var started = false;
+                  var render = function() {
+                      requestAnimationFrame(render);
+
+                      if (started) {
+                          scene.traverse(function(node) {
+                              if (node instanceof THREE.Mesh) {
+                                  var obj = meshes[node.id];
+                                  node.position.x += obj.direction.x;
+                                  node.position.y += obj.direction.y;
+                                  obj.direction.y -= 4;
+                                  obj.direction.x *= 0.95;
+                                  if (node.position.y < 0) {
+                                      node.position.y = 0;
+                                      obj.direction.y = -obj.direction.y * 0.2;
+                                      obj.direction.x *= 0.9;
+                                  }
+                                  if (node.position.x < 0) {
+                                      node.position.x = 0;
+                                      obj.direction.x = -obj.direction.x;
+                                  }
+                                  if (node.position.x >= window.innerWidth) {
+                                      node.position.x = window.innerWidth - 1;
+                                      obj.direction.x = -obj.direction.x;
+                                  }
+                              }
+                          });
+                      }
+
+                      renderer.render(scene, camera);
+                  };
+
+
+                  $(renderer.domElement).click(function(event) {
+                      console.log("starting simulation")
+                      scene.traverse(function(node) {
+                          if (node instanceof THREE.Mesh) {
+                              var obj = meshes[node.id];
+                              obj.direction.y = (Math.random() * 30) + 1;
+                              obj.direction.x = (Math.random() * 50) - 25;
+                          }
+                      })
+                      started = true;
+                  })
+
+                  render();
+                  console.log("READY");
+                  $('body').append(renderer.domElement);
+              });
+            });
+        }
+    </script>
+    <style type="text/css">
+        .container-box {
+            width: 200px;
+            height: 100px;
+            text-align: center;
+            background-color: #6666CC;
+        }
+
+        .container-right {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            background-color: #CC1111;
+        }
+
+        .other {
+            width: 100px;
+            background-color: #EEEEBB
+        }
+
+        #foo {
+            vertical-align: middle;
+        }
+
+        html {
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100%;
+            background-color: #999999;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            position: absolute;
+            top: 0px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container" class="container-box breakable">
+        <div class="breakable" id="foo">foo!</div>
+    </div>
+    <div class="other">
+        hello!
+    </div>
+    <div class="container-right breakable">
+        oh!
+    </div>
+</body>
+
+</html>
