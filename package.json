@@ -12,6 +12,7 @@
   "author": "Andy Stanton",
   "license": "MIT",
   "dependencies": {
+    "bootstrap": "^3.3.6",
     "dom-to-image": "git+https://git@github.com/tsayen/dom-to-image.git",
     "express": "^4.13.4",
     "jquery": "^2.2.3",

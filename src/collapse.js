@@ -187,7 +187,6 @@ const handleScene = sceneData => {
         renderer.render(scene, camera);
     };
 
-
     $(renderer.domElement).click(event => {
         console.log("starting simulation");
         scene.traverse(node => {
