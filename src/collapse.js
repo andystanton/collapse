@@ -94,14 +94,15 @@ const setupScene = images => {
 
     const materials = {};
 
-    const getMaterial = (r, g, b, a) => {
+    const getMaterial = (r, g, b, a, o) => {
         const rgbName = `${r},${g},${b}`;
         const rgbaName = `${rgbName},${a}`;
         if (!materials[rgbaName]) {
-            return new THREE.MeshBasicMaterial({
-                'color': new THREE.Color(`rgb(${rgbName})`),
-                'opacity': a,
-                'transparent': a > 0
+            var texture = new THREE.DataTexture(Uint8Array.from([r,g,b,a]), 1, 1, THREE.RGBAFormat, THREE.UnsignedByteType);
+            texture.needsUpdate = true;
+            materials[rgbaName] = new THREE.MeshBasicMaterial({
+              'map': texture,
+              'transparent': o > 0
             });
         }
         return materials[rgbaName];
@@ -122,6 +123,7 @@ const setupScene = images => {
                             imageWrapper.pixels[pixelOffset + 0],
                             imageWrapper.pixels[pixelOffset + 1],
                             imageWrapper.pixels[pixelOffset + 2],
+                            imageWrapper.pixels[pixelOffset + 3],
                             opacity));
                     mesh.position.x = imageWrapper.position.left + x;
                     mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
