@@ -18,12 +18,41 @@
 
         if (enable) {
             $(window).load(function() {
-                Promise.resolve(setupScene([]))
-                    .then(handleScene)
-                    .then(_ => {
+                COLLAPSE.configure({
+                        chunkSize: 4,
+                        loop: (id, obj) => {
+                            obj.position.x += obj.direction.x;
+                            obj.position.y += obj.direction.y;
+
+                            obj.direction.y -= 4;
+                            obj.direction.x *= 0.95;
+
+                            if (obj.position.y < 0) {
+                                obj.position.y = 0;
+                                obj.direction.x *= 0.9;
+
+                                if (Math.abs(obj.direction.y) < 15) {
+                                    tbd.push(id);
+                                } else {
+                                    obj.direction.y = -obj.direction.y * 0.4;
+                                }
+                            }
+
+                            if (obj.position.x < 0) {
+                                obj.position.x = 0;
+                                obj.direction.x = -obj.direction.x;
+                            }
+
+                            if (obj.position.x >= window.innerWidth) {
+                                obj.position.x = window.innerWidth - 1;
+                                obj.direction.x = -obj.direction.x;
+                            }
+                        }
+                    })
+                    .then(_ =>
                         $(document).click(event => {
                             const element = event.toElement;
-                            if ((element.offsetWidth * element.offsetHeight) < 300000) {
+                            if (element.offsetWidth * element.offsetHeight < 300000) {
                                 COLLAPSE.collapse(event.toElement)
                                     .then(image => imageToMesh(image))
                                     .then(_ => {
@@ -39,8 +68,8 @@
                                         element.style.visibility = 'hidden';
                                     });
                             }
-                        });
-                    })
+                        })
+                    );
             });
         }
     </script>
@@ -61,7 +90,7 @@
     <div class="jumbotron">
         <h1 class="breakable">Collapse</h1>
         <p class="lead">
-          Cras justo odio, dapibus ac facilisis in, egestas eget quam. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.
+            Cras justo odio, dapibus ac facilisis in, egestas eget quam. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.
         </p>
         <p><a class="btn btn-lg btn-success" href="#" role="button">Sign up today</a></p>
     </div>

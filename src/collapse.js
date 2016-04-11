@@ -28,9 +28,6 @@ const COLLAPSE = {
                         ctx.drawImage(image, 0, 0);
                         svgCanvas.remove();
 
-                        console.log(element.offsetWidth);
-                        console.log(element.offsetHeight);
-
                         resolve({
                             pixels: ctx.getImageData(
                                 0,
@@ -44,18 +41,63 @@ const COLLAPSE = {
                     };
                 });
             });
+    },
+    configure: configuration => {
+        chunkSize = configuration.chunkSize ? configuration.chunkSize : 4;
+        scene = new THREE.Scene();
+        renderer = new THREE.WebGLRenderer({
+            alpha: true
+        });
+
+        camera = new THREE.OrthographicCamera(0, window.innerWidth, window.innerHeight, 0, 1, 1000);
+
+        scene.add(camera);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.position.z = 5;
+
+        var started = false;
+        const render = () => {
+            requestAnimationFrame(render);
+
+            if (started && configuration.loop) {
+                scene.traverse(node => {
+                    if (node instanceof THREE.Mesh) {
+                        const obj = meshes[node.id];
+                        configuration.loop(node.id, obj);
+                        node.position.x = obj.position.x;
+                        node.position.y = obj.position.y;
+                    }
+                });
+                for (let meshId of tbd) {
+                    delete(meshes[meshId]);
+                    scene.remove(scene.getObjectById(meshId));
+                }
+                tbd = [];
+            }
+
+            renderer.render(scene, camera);
+        };
+
+        console.log("starting simulation");
+        started = true;
+
+        document.querySelector('body').appendChild(renderer.domElement);
+
+        render();
+
+        return Promise.resolve();
     }
 };
 
 var scene;
 var renderer;
 var camera;
+var chunkSize;
 
 const materials = {};
 const geoms = {};
 const meshes = {};
-
-const chunkSize = 2;
+var tbd = [];
 
 const assignUVs = geometry => {
     geometry.computeBoundingBox();
@@ -187,88 +229,11 @@ const imageToMesh = imageWrapper => {
                     mesh.started = false;
                     scene.add(mesh);
                     meshes[mesh.id] = {
-                        direction: new THREE.Vector2(0, 0)
+                        direction: new THREE.Vector2(0, 0),
+                        position: new THREE.Vector2(mesh.position.x, mesh.position.y),
                     };
                 }
             }
         }
     }
-};
-
-const setupScene = images => {
-    scene = new THREE.Scene();
-    renderer = new THREE.WebGLRenderer({
-        alpha: true
-    });
-
-    camera = new THREE.OrthographicCamera(0, window.innerWidth, window.innerHeight, 0, 1, 1000);
-
-    scene.add(camera);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.position.z = 5;
-
-    images.forEach(imageToMesh);
-
-    return {
-        'camera': camera,
-        'scene': scene,
-        'renderer': renderer,
-        'meshes': meshes
-    };
-};
-
-const handleScene = sceneData => {
-    var started = false;
-    const render = () => {
-        requestAnimationFrame(render);
-
-        if (started) {
-            const tbd = [];
-            scene.traverse(node => {
-                if (node instanceof THREE.Mesh) {
-                    const obj = meshes[node.id];
-
-                    node.position.x += obj.direction.x;
-                    node.position.y += obj.direction.y;
-
-                    obj.direction.y -= 4;
-                    obj.direction.x *= 0.95;
-
-                    if (node.position.y < 0) {
-                        node.position.y = 0;
-                        obj.direction.x *= 0.9;
-
-                        if (Math.abs(obj.direction.y) < 15) {
-                          tbd.push(node.id);
-                        } else {
-                          obj.direction.y = -obj.direction.y * 0.4;
-                        }
-                    }
-
-                    if (node.position.x < 0) {
-                        node.position.x = 0;
-                        obj.direction.x = -obj.direction.x;
-                    }
-
-                    if (node.position.x >= window.innerWidth) {
-                        node.position.x = window.innerWidth - 1;
-                        obj.direction.x = -obj.direction.x;
-                    }
-                }
-            });
-            for (let meshId of tbd) {
-              delete(meshes[meshId]);
-              scene.remove(scene.getObjectById(meshId));
-            }
-        }
-
-        renderer.render(scene, camera);
-    };
-
-    console.log("starting simulation");
-    started = true;
-
-    document.querySelector('body').appendChild(renderer.domElement);
-
-    render();
 };
