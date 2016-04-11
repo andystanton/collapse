@@ -1,4 +1,5 @@
 const gulp = require('gulp');
+const gutil = require('gulp-util');
 const babel = require('gulp-babel');
 
 gulp.task('copy-js', () => {
@@ -32,12 +33,12 @@ gulp.task('build-js', () => {
         ])
         .pipe(babel({
             presets: ['es2015']
-        }))
+        })).on('error', gutil.log)
         .pipe(gulp.dest('./public/js'));
 });
 
 gulp.task('watch', () => {
-  gulp.watch(['src/*.js'], ['build-js']);
+    gulp.watch(['src/*.js'], ['build-js']);
 });
 
 gulp.task('default', ['copy-js', 'copy-css', 'copy-fonts', 'build-js']);

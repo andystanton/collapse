@@ -1,9 +1,9 @@
-const disassemble = element => {
+const collapse = element => {
     const getPosition = element => {
-        const leftPos = $(element)[0].getBoundingClientRect().left + $(window)['scrollLeft']();
-        const rightPos = $(element)[0].getBoundingClientRect().right + $(window)['scrollLeft']();
-        const topPos = $(element)[0].getBoundingClientRect().top + $(window)['scrollTop']();
-        const bottomPos = $(element)[0].getBoundingClientRect().bottom + $(window)['scrollTop']();
+        const leftPos = element.getBoundingClientRect().left + window.scrollX;
+        const rightPos = element.getBoundingClientRect().right + window.scrollX;
+        const topPos = element.getBoundingClientRect().top + window.scrollY;
+        const bottomPos = element.getBoundingClientRect().bottom + window.scrollY;
 
         return {
             left: leftPos,
@@ -13,6 +13,25 @@ const disassemble = element => {
         };
     };
 
+    return new Promise(resolve => {
+        domtoimage.toSvg(element).then(dataUrl => {
+            const image = new Image();
+            image.src = dataUrl;
+
+            image.onload = () => {
+                const outImages = [{
+                    data: image,
+                    width: element.offsetWidth,
+                    height: element.offsetHeight,
+                    position: getPosition(element)
+                }];
+                resolve(outImages);
+            };
+        });
+    });
+};
+
+const disassemble = element => {
     const childPromises = [];
     if ($(element).find('.breakable').length) {
         $(element).children().each((_, child) => {
@@ -21,43 +40,25 @@ const disassemble = element => {
     }
 
     return Promise.all(childPromises)
-        .then(images =>
-            new Promise(resolve => {
-                var returnImages = [];
-                for (let i = 0; i < images.length; ++i) {
-                    returnImages = returnImages.concat(images[i]);
-                }
+        .then(images => {
+            var returnImages = [];
+            for (let i = 0; i < images.length; ++i) {
+                returnImages = returnImages.concat(images[i]);
+            }
 
-                if ($(element).hasClass("breakable")) {
-                    const position = getPosition(element);
-
-                    domtoimage.toSvg($(element)[0]).then(dataUrl => {
-                        const image = new Image();
-                        image.src = dataUrl;
-
-                        image.onload = () => {
-                            const outImages = [{
-                                data: image,
-                                width: $(element).width(),
-                                height: $(element).height(),
-                                position: getPosition($(element))
-                            }];
-
-                            console.log("resolving");
-                            resolve(outImages.concat(returnImages));
-                        };
-                    });
-                } else {
-                    resolve(returnImages);
-                }
-            })
-        );
+            if ($(element).hasClass("breakable")) {
+                return collapse($(element)[0]).then(images =>
+                    images.concat(returnImages));
+            } else {
+                return returnImages;
+            }
+        });
 };
 
 const addPixels = images =>
     images.map(imageWrapper => {
-        const svgCanvas = $('<canvas>');
-        const ctx = svgCanvas[0].getContext('2d');
+        const svgCanvas = document.createElement('canvas');
+        const ctx = svgCanvas.getContext('2d');
 
         ctx.drawImage(imageWrapper.data, 0, 0);
 
@@ -274,7 +275,7 @@ const handleScene = sceneData => {
         renderer.render(scene, camera);
     };
 
-    $(renderer.domElement).click(event => {
+    renderer.domElement.addEventListener('click', event => {
         console.log("starting simulation");
         scene.traverse(node => {
             if (node instanceof THREE.Mesh) {
@@ -286,8 +287,9 @@ const handleScene = sceneData => {
         started = true;
     });
 
-    $('.breakable').css('visibility', 'hidden');
-    $('body').append(renderer.domElement);
+    Array.prototype.slice.call(document.querySelectorAll(".breakable"))
+        .forEach(element => element.style.visibility = 'hidden');
+    document.querySelector('body').appendChild(renderer.domElement);
 
     render();
 };
