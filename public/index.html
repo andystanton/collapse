@@ -10,6 +10,7 @@
     <link rel="stylesheet" type="text/css" href="css/collapse.css" />
 
     <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/jquery.hotkeys.js"></script>
     <script type="text/javascript" src="js/dom-to-image.min.js"></script>
     <script type="text/javascript" src="js/three.min.js"></script>
     <script type="text/javascript" src="js/collapse.js"></script>
@@ -50,6 +51,10 @@
                         }
                     })
                     .then(function() {
+                        $(document).bind('keydown', 'ctrl+r', function() {
+                            console.log('reset');
+                            COLLAPSE.reset();
+                        });
                         $(document).click(function(event) {
                             var element = event.target;
                             if (element.offsetWidth * element.offsetHeight < 300000) {
@@ -63,8 +68,6 @@
                                                 obj.started = true;
                                             }
                                         });
-                                    }).then(function() {
-                                        element.style.visibility = 'hidden';
                                     });
                             }
                         })

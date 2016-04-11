@@ -1,4 +1,21 @@
 const COLLAPSE = {
+    reset: () => {
+        for (let element of hidden) {
+            element.style.visibility = 'visible';
+        }
+
+        for (let meshId of Object.keys(meshes)) {
+            scene.remove(scene.getObjectById(meshId, true));
+        }
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        materials = {};
+        geoms = {};
+        meshes = {};
+        hidden = [];
+        // COLLAPSE.configure(COLLAPSE.configuration);
+    },
     collapse: element => {
         const getPosition = element => {
             const leftPos = element.getBoundingClientRect().left + window.scrollX;
@@ -41,9 +58,15 @@ const COLLAPSE = {
                     };
                 });
             })
-            .then(imageToMesh);
+            .then(imageToMesh)
+            .then(_ => {
+                element.style.visibility = 'hidden';
+                hidden.push(element);
+            });
     },
     configure: configuration => {
+        COLLAPSE.configuration = configuration;
+
         chunkSize = configuration.chunkSize ? configuration.chunkSize : 4;
         scene = new THREE.Scene();
         renderer = new THREE.WebGLRenderer({
@@ -56,33 +79,7 @@ const COLLAPSE = {
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.position.z = 5;
 
-        var tbd = [];
-
-        var started = false;
-        const render = () => {
-            requestAnimationFrame(render);
-
-            if (started && configuration.loop) {
-                scene.traverse(node => {
-                    if (node instanceof THREE.Mesh) {
-                        const obj = meshes[node.id];
-                        configuration.loop(node.id, obj, tbd);
-                        node.position.x = obj.position.x;
-                        node.position.y = obj.position.y;
-                    }
-                });
-                for (let meshId of tbd) {
-                    delete(meshes[meshId]);
-                    scene.remove(scene.getObjectById(meshId));
-                }
-                tbd = [];
-            }
-
-            renderer.render(scene, camera);
-        };
-
         console.log("starting simulation");
-        started = true;
 
         document.querySelector('body').appendChild(renderer.domElement);
 
@@ -96,10 +93,35 @@ var scene;
 var renderer;
 var camera;
 var chunkSize;
+var animationFrameId;
 
-const materials = {};
-const geoms = {};
-const meshes = {};
+var materials = {};
+var geoms = {};
+var meshes = {};
+var hidden = [];
+
+const render = () => {
+    animationFrameId = requestAnimationFrame(render);
+
+    var tbd = [];
+    if (COLLAPSE.configuration.loop) {
+        scene.traverse(node => {
+            if (node instanceof THREE.Mesh) {
+                const obj = meshes[node.id];
+                COLLAPSE.configuration.loop(node.id, obj, tbd);
+                node.position.x = obj.position.x;
+                node.position.y = obj.position.y;
+            }
+        });
+        for (let meshId of tbd) {
+            delete(meshes[meshId]);
+            scene.remove(scene.getObjectById(meshId));
+        }
+        tbd = [];
+    }
+
+    renderer.render(scene, camera);
+};
 
 const assignUVs = geometry => {
     geometry.computeBoundingBox();
@@ -175,7 +197,8 @@ const imageToMesh = imageWrapper => {
                     mesh.started = false;
                     scene.add(mesh);
                     meshes[mesh.id] = {
-                        direction: new THREE.Vector2(0, 0)
+                        direction: new THREE.Vector2(0, 0),
+                        position: new THREE.Vector2(mesh.position.x, mesh.position.y),
                     };
                 }
             } else {

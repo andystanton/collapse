@@ -17,6 +17,7 @@
     "express": "^4.13.4",
     "gulp-util": "^3.0.7",
     "jquery": "^2.2.3",
+    "jquery.hotkeys": "^0.1.0",
     "three": "^0.75.0"
   },
   "devDependencies": {
