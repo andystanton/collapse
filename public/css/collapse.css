@@ -4,4 +4,5 @@ canvas {
     z-index: 2;
     position: absolute;
     top: 0px;
+    pointer-events:none;
 }
