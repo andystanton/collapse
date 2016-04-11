@@ -28,7 +28,6 @@ gulp.task('copy-fonts', () => {
 
 gulp.task('build-js', () => {
     gulp.src([
-            'src/worker.js',
             'src/collapse.js'
         ])
         .pipe(babel({

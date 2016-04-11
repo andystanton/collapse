@@ -1,58 +1,50 @@
-const collapse = element => {
-    const getPosition = element => {
-        const leftPos = element.getBoundingClientRect().left + window.scrollX;
-        const rightPos = element.getBoundingClientRect().right + window.scrollX;
-        const topPos = element.getBoundingClientRect().top + window.scrollY;
-        const bottomPos = element.getBoundingClientRect().bottom + window.scrollY;
+const COLLAPSE = {
+    collapse: element => {
+        const getPosition = element => {
+            const leftPos = element.getBoundingClientRect().left + window.scrollX;
+            const rightPos = element.getBoundingClientRect().right + window.scrollX;
+            const topPos = element.getBoundingClientRect().top + window.scrollY;
+            const bottomPos = element.getBoundingClientRect().bottom + window.scrollY;
 
-        return {
-            left: leftPos,
-            right: rightPos,
-            top: topPos,
-            bottom: bottomPos
-        };
-    };
-
-    return new Promise(resolve => {
-        domtoimage.toSvg(element).then(dataUrl => {
-            const image = new Image();
-            image.src = dataUrl;
-
-            image.onload = () => {
-                const outImages = [{
-                    data: image,
-                    width: element.offsetWidth,
-                    height: element.offsetHeight,
-                    position: getPosition(element)
-                }];
-                resolve(outImages);
+            return {
+                left: leftPos,
+                right: rightPos,
+                top: topPos,
+                bottom: bottomPos
             };
-        });
-    });
-};
+        };
 
-const disassemble = element => {
-    const childPromises = [];
-    if ($(element).find('.breakable').length) {
-        $(element).children().each((_, child) => {
-            childPromises.push(disassemble(child));
-        });
+        return domtoimage.toSvg(element)
+            .then(dataUrl => {
+                return new Promise(resolve => {
+                    const image = new Image();
+                    image.src = dataUrl;
+
+                    image.onload = () => {
+                        const svgCanvas = document.createElement('canvas');
+                        svgCanvas.width = element.offsetWidth;
+                        svgCanvas.height = element.offsetWidth;
+                        const ctx = svgCanvas.getContext('2d');
+                        ctx.drawImage(image, 0, 0);
+                        svgCanvas.remove();
+
+                        console.log(element.offsetWidth);
+                        console.log(element.offsetHeight);
+
+                        resolve({
+                            pixels: ctx.getImageData(
+                                0,
+                                0,
+                                element.offsetWidth,
+                                element.offsetHeight).data,
+                            width: element.offsetWidth,
+                            height: element.offsetHeight,
+                            position: getPosition(element)
+                        });
+                    };
+                });
+            });
     }
-
-    return Promise.all(childPromises)
-        .then(images => {
-            var returnImages = [];
-            for (let i = 0; i < images.length; ++i) {
-                returnImages = returnImages.concat(images[i]);
-            }
-
-            if ($(element).hasClass("breakable")) {
-                return collapse($(element)[0]).then(images =>
-                    images.concat(returnImages));
-            } else {
-                return returnImages;
-            }
-        });
 };
 
 var scene;
@@ -64,20 +56,6 @@ const geoms = {};
 const meshes = {};
 
 const chunkSize = 2;
-
-const addPixels = images =>
-    images.map(imageWrapper => {
-        const svgCanvas = document.createElement('canvas');
-        const ctx = svgCanvas.getContext('2d');
-
-        ctx.drawImage(imageWrapper.data, 0, 0);
-
-        const pixelData = ctx.getImageData(0, 0, imageWrapper.width, imageWrapper.height).data;
-        imageWrapper.pixels = pixelData;
-
-        svgCanvas.remove();
-        return imageWrapper;
-    });
 
 const assignUVs = geometry => {
     geometry.computeBoundingBox();
@@ -245,6 +223,7 @@ const handleScene = sceneData => {
         requestAnimationFrame(render);
 
         if (started) {
+            const tbd = [];
             scene.traverse(node => {
                 if (node instanceof THREE.Mesh) {
                     const obj = meshes[node.id];
@@ -257,8 +236,13 @@ const handleScene = sceneData => {
 
                     if (node.position.y < 0) {
                         node.position.y = 0;
-                        obj.direction.y = -obj.direction.y * 0.2;
                         obj.direction.x *= 0.9;
+
+                        if (Math.abs(obj.direction.y) < 15) {
+                          tbd.push(node.id);
+                        } else {
+                          obj.direction.y = -obj.direction.y * 0.4;
+                        }
                     }
 
                     if (node.position.x < 0) {
@@ -272,6 +256,10 @@ const handleScene = sceneData => {
                     }
                 }
             });
+            for (let meshId of tbd) {
+              delete(meshes[meshId]);
+              scene.remove(scene.getObjectById(meshId));
+            }
         }
 
         renderer.render(scene, camera);
