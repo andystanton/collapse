@@ -40,7 +40,8 @@ const COLLAPSE = {
                         });
                     };
                 });
-            });
+            })
+            .then(imageToMesh);
     },
     configure: configuration => {
         chunkSize = configuration.chunkSize ? configuration.chunkSize : 4;
@@ -55,6 +56,8 @@ const COLLAPSE = {
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.position.z = 5;
 
+        var tbd = [];
+
         var started = false;
         const render = () => {
             requestAnimationFrame(render);
@@ -63,7 +66,7 @@ const COLLAPSE = {
                 scene.traverse(node => {
                     if (node instanceof THREE.Mesh) {
                         const obj = meshes[node.id];
-                        configuration.loop(node.id, obj);
+                        configuration.loop(node.id, obj, tbd);
                         node.position.x = obj.position.x;
                         node.position.y = obj.position.y;
                     }
@@ -97,7 +100,6 @@ var chunkSize;
 const materials = {};
 const geoms = {};
 const meshes = {};
-var tbd = [];
 
 const assignUVs = geometry => {
     geometry.computeBoundingBox();

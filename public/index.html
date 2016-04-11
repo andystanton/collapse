@@ -20,7 +20,7 @@
             $(window).load(function() {
                 COLLAPSE.configure({
                         chunkSize: 4,
-                        loop: (id, obj) => {
+                        loop: function(id, obj, tbd) {
                             obj.position.x += obj.direction.x;
                             obj.position.y += obj.direction.y;
 
@@ -49,27 +49,26 @@
                             }
                         }
                     })
-                    .then(_ =>
-                        $(document).click(event => {
-                            const element = event.toElement;
+                    .then(function() {
+                        $(document).click(function(event) {
+                            var element = event.target;
                             if (element.offsetWidth * element.offsetHeight < 300000) {
-                                COLLAPSE.collapse(event.toElement)
-                                    .then(image => imageToMesh(image))
-                                    .then(_ => {
-                                        scene.traverse(node => {
+                                COLLAPSE.collapse(element)
+                                    .then(function() {
+                                        scene.traverse(function(node) {
                                             if (node instanceof THREE.Mesh && !meshes[node.id].started) {
-                                                const obj = meshes[node.id];
+                                                var obj = meshes[node.id];
                                                 obj.direction.y = (Math.random() * 30) + 1;
                                                 obj.direction.x = (Math.random() * 50) - 25;
                                                 obj.started = true;
                                             }
                                         });
-                                    }).then(_ => {
+                                    }).then(function() {
                                         element.style.visibility = 'hidden';
                                     });
                             }
                         })
-                    );
+                    });
             });
         }
     </script>
