@@ -30,7 +30,7 @@ const COLLAPSE = {
     configure: configuration => {
         COLLAPSE.configuration = configuration;
 
-        chunkSize = configuration.chunkSize ? configuration.chunkSize : 4;
+        COLLAPSE.configuration.chunkSize = configuration.chunkSize ? configuration.chunkSize : 4;
         scene = new THREE.Scene();
         renderer = new THREE.WebGLRenderer({
             alpha: true
@@ -55,7 +55,6 @@ const COLLAPSE = {
 let scene;
 let renderer;
 let camera;
-let chunkSize;
 let animationFrameId;
 
 let materials = {};
@@ -142,12 +141,11 @@ const getMaterial = (r, g, b, a) => {
 
 const dataToImage = (dataUrl, element) => new Promise(resolve => {
     const getPosition = element => ({
-        left: element.getBoundingClientRect().left + window.scrollX,
-        right: element.getBoundingClientRect().right + window.scrollX,
-        top: element.getBoundingClientRect().top + window.scrollY,
-        bottom: element.getBoundingClientRect().bottom + window.scrollY
+        left: element.getBoundingClientRect().left,
+        right: element.getBoundingClientRect().right,
+        top: element.getBoundingClientRect().top,
+        bottom: element.getBoundingClientRect().bottom,
     });
-
     const image = new Image();
     image.crossOrigin = "Anonymous";
     image.src = dataUrl;
@@ -161,7 +159,6 @@ const dataToImage = (dataUrl, element) => new Promise(resolve => {
         ctx.drawImage(image, 0, 0);
 
         svgCanvas.remove();
-
         resolve({
             pixels: ctx.getImageData(
                 0,
@@ -170,12 +167,21 @@ const dataToImage = (dataUrl, element) => new Promise(resolve => {
                 element.offsetHeight).data,
             width: element.offsetWidth,
             height: element.offsetHeight,
-            position: getPosition(element)
+            position: getPosition(element),
         });
     };
 });
 
 const imageToMesh = imageWrapper => {
+    let chunkSize = COLLAPSE.configuration.chunkSize;
+    let elementArea = imageWrapper.width * imageWrapper.height;
+
+    if (elementArea > 80000) {
+      chunkSize = 16;
+    } else if (elementArea > 20000) {
+      chunkSize = 8;
+    }
+
     const chunkGeometry = getRectangleGeometry(chunkSize, chunkSize);
 
     for (let y = 0; y < imageWrapper.height; y += chunkSize) {
