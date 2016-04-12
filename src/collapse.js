@@ -67,18 +67,16 @@ const render = () => {
 
     let tbd = [];
     if (COLLAPSE.configuration.loop) {
-        scene.traverse(node => {
-            if (node instanceof THREE.Mesh) {
-                const obj = meshes[node.id];
-                COLLAPSE.configuration.loop(node.id, obj, tbd);
-                node.position.x = obj.position.x;
-                node.position.y = obj.position.y;
-            }
-        });
-        for (let meshId of tbd) {
+        for (let meshId of Object.keys(meshes)) {
+            const obj = meshes[meshId];
+            COLLAPSE.configuration.loop(obj, tbd);
+            obj.mesh.position.x = obj.position.x;
+            obj.mesh.position.y = obj.position.y;
+        }
+        tbd.forEach(meshId => {
             delete(meshes[meshId]);
             scene.remove(scene.getObjectById(meshId));
-        }
+        });
         tbd = [];
     }
 
@@ -177,9 +175,9 @@ const imageToMesh = imageWrapper => {
     let elementArea = imageWrapper.width * imageWrapper.height;
 
     if (elementArea > 80000) {
-      chunkSize = 16;
+        chunkSize = 16;
     } else if (elementArea > 20000) {
-      chunkSize = 8;
+        chunkSize = 8;
     }
 
     const chunkGeometry = getRectangleGeometry(chunkSize, chunkSize);
@@ -259,17 +257,16 @@ const imageToMesh = imageWrapper => {
             // If the chunk has not been discarded (i.e. it isn't totally transparent)
             // generate a mesh and physics object for it.
             if (material) {
-                const mesh = new THREE.Mesh(chunkGeometry, material);
-
-                mesh.position.x = imageWrapper.position.left + x;
-                mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
-                mesh.started = false;
-
-                scene.add(mesh);
-                meshes[mesh.id] = {
+                const obj = {
+                    mesh: new THREE.Mesh(chunkGeometry, material),
                     direction: new THREE.Vector2(0, 0),
-                    position: new THREE.Vector2(mesh.position.x, mesh.position.y),
+                    position: new THREE.Vector2(imageWrapper.position.left + x, window.innerHeight - imageWrapper.position.top - y),
+                    started: false,
                 };
+                const meshId = obj.mesh.id;
+                obj.meshId = meshId;
+                meshes[meshId] = obj;
+                scene.add(obj.mesh);
             }
         }
     }
