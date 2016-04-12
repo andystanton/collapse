@@ -16,86 +16,61 @@
     <script type="text/javascript" src="js/collapse.js"></script>
     <script type="text/javascript" src="js/bootstrap.min.js"></script>
     <script type="text/javascript">
-        var enable = true;
+        $(window).load(function() {
+            COLLAPSE.configure({
+                    chunkSize: 4,
+                    loop: function(obj, tbd) {
+                        obj.position.x += obj.direction.x;
+                        obj.position.y += obj.direction.y;
 
-        if (enable) {
-            $(window).load(function() {
-                COLLAPSE.configure({
-                        chunkSize: 4,
-                        loop: function(obj, tbd) {
-                            obj.position.x += obj.direction.x;
-                            obj.position.y += obj.direction.y;
+                        obj.direction.y -= 4;
+                        obj.direction.x *= 0.95;
 
-                            obj.direction.y -= 4;
-                            obj.direction.x *= 0.95;
+                        if (obj.position.y < 0) {
+                            obj.position.y = 0;
+                            obj.direction.x *= 0.9;
 
-                            if (obj.position.y < 0) {
-                                obj.position.y = 0;
-                                obj.direction.x *= 0.9;
-
-                                if (Math.abs(obj.direction.y) < 15) {
-                                    tbd.push(obj.meshId);
-                                } else {
-                                    obj.direction.y = -obj.direction.y * 0.4;
-                                }
-                            }
-
-                            if (obj.position.x < 0) {
-                                obj.position.x = 0;
-                                obj.direction.x = -obj.direction.x;
-                            }
-
-                            if (obj.position.x >= window.innerWidth) {
-                                obj.position.x = window.innerWidth - 1;
-                                obj.direction.x = -obj.direction.x;
+                            if (Math.abs(obj.direction.y) < 15) {
+                                tbd.push(obj.meshId);
+                            } else {
+                                obj.direction.y = -obj.direction.y * 0.4;
                             }
                         }
-                    })
-                    .then(function() {
-                        $(document).bind('keydown', 'ctrl+r', function() {
-                            console.log('reset');
-                            COLLAPSE.reset();
-                        });
-                        // $(document).scroll(function(event) {
-                        //     var i = 0;
-                        //     $(':visible').each(function(count, element) {
-                        //         if (element.offsetWidth * element.offsetHeight < 30000) {
-                        //             if (element.getBoundingClientRect().top < 0) {
-                        //                 COLLAPSE.collapse(element)
-                        //                     .then(function() {
-                        //                         scene.traverse(function(node) {
-                        //                             if (node instanceof THREE.Mesh && !meshes[node.id].started) {
-                        //                                 var obj = meshes[node.id];
-                        //                                 obj.direction.y = (Math.random() * 30) + 1;
-                        //                                 obj.direction.x = (Math.random() * 50) - 25;
-                        //                                 obj.started = true;
-                        //                             }
-                        //                         });
-                        //                     });
-                        //             }
-                        //         }
-                        //     });
-                        // });
 
-                        $(document).click(function(event) {
-                            var element = event.target;
-                            if (element.offsetWidth * element.offsetHeight < 300000) {
-                                COLLAPSE.collapse(element)
-                                    .then(function() {
-                                        scene.traverse(function(node) {
-                                            if (node instanceof THREE.Mesh && !meshes[node.id].started) {
-                                                var obj = meshes[node.id];
-                                                obj.direction.y = (Math.random() * 30) + 1;
-                                                obj.direction.x = (Math.random() * 50) - 25;
-                                                obj.started = true;
-                                            }
-                                        });
-                                    });
-                            }
-                        })
+                        if (obj.position.x < 0) {
+                            obj.position.x = 0;
+                            obj.direction.x = -obj.direction.x;
+                        }
+
+                        if (obj.position.x >= window.innerWidth) {
+                            obj.position.x = window.innerWidth - 1;
+                            obj.direction.x = -obj.direction.x;
+                        }
+                    }
+                })
+                .then(function() {
+                    $(document).bind('keydown', 'ctrl+r', function() {
+                        console.log('reset');
+                        COLLAPSE.reset();
                     });
-            });
-        }
+
+                    $(document).click(function(event) {
+                        var element = event.target;
+                        if (element.offsetWidth * element.offsetHeight < 300000) {
+                            COLLAPSE.collapse(element)
+                                .then(function(collapsed) {
+                                    var fragKeys = Object.keys(collapsed.fragments);
+                                    for (var i = 0; i < fragKeys.length; ++i) {
+                                        var obj = collapsed.fragments[fragKeys[i]];
+                                        obj.direction.y = (Math.random() * 30) + 1;
+                                        obj.direction.x = (Math.random() * 50) - 25;
+                                        obj.started = true;
+                                    }
+                                });
+                        }
+                    })
+                });
+        });
     </script>
 </head>
 

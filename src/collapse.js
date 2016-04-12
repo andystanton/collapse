@@ -1,30 +1,32 @@
 const COLLAPSE = {
     reset: () => {
-        for (let element of hidden) {
-            element.style.visibility = 'visible';
-        }
-
-        for (let meshId of Object.keys(meshes)) {
-            scene.remove(scene.getObjectById(meshId, true));
-        }
-
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-        }
-
-        materials = {};
-        geoms = {};
-        meshes = {};
-        hidden = [];
+        // for (let element of hidden) {
+        //     element.style.visibility = 'visible';
+        // }
+        //
+        // for (let meshId of Object.keys(meshes)) {
+        //     scene.remove(scene.getObjectById(meshId, true));
+        // }
+        //
+        // if (animationFrameId) {
+        //     cancelAnimationFrame(animationFrameId);
+        // }
+        //
+        // materials = {};
+        // geoms = {};
+        // meshes = {};
+        // hidden = [];
         // COLLAPSE.configure(COLLAPSE.configuration);
     },
     collapse: element => {
         return domtoimage.toSvg(element)
             .then(dataUrl => dataToImage(dataUrl, element))
             .then(imageToMesh)
-            .then(_ => {
+            .then(collapsed => {
                 element.style.visibility = 'hidden';
                 hidden.push(element);
+                elements.push(collapsed);
+                return collapsed;
             });
     },
     configure: configuration => {
@@ -49,7 +51,53 @@ const COLLAPSE = {
         render();
 
         return Promise.resolve();
-    }
+    },
+    Fragment: class Fragment {
+        constructor(mesh, position, direction) {
+            this._mesh = mesh;
+            this._position = position;
+            this._direction = direction;
+            this._started = false;
+        }
+        get mesh() {
+            return this._mesh;
+        }
+        set mesh(mesh) {
+            this._mesh = mesh;
+        }
+        get position() {
+            return this._position;
+        }
+        set position(position) {
+            this._position = position;
+        }
+        get direction() {
+            return this._direction;
+        }
+        set direction(direction) {
+            this._direction = direction;
+        }
+        get started() {
+            return this._started;
+        }
+        set started(started) {
+            this._started = started;
+        }
+        get meshId() {
+            return this._mesh.id;
+        }
+    },
+    Element: class Element {
+        constructor(fragments) {
+            this._fragments = fragments;
+        }
+        get fragments() {
+            return this._fragments;
+        }
+        set fragments(fragments) {
+            this._fragments = fragments;
+        }
+    },
 };
 
 let scene;
@@ -59,25 +107,25 @@ let animationFrameId;
 
 let materials = {};
 let geoms = {};
-let meshes = {};
+let elements = [];
 let hidden = [];
 
 const render = () => {
     animationFrameId = requestAnimationFrame(render);
 
-    let tbd = [];
     if (COLLAPSE.configuration.loop) {
-        for (let meshId of Object.keys(meshes)) {
-            const obj = meshes[meshId];
-            COLLAPSE.configuration.loop(obj, tbd);
-            obj.mesh.position.x = obj.position.x;
-            obj.mesh.position.y = obj.position.y;
-        }
-        tbd.forEach(meshId => {
-            delete(meshes[meshId]);
-            scene.remove(scene.getObjectById(meshId));
+        elements.forEach(element => {
+            let tbd = [];
+            for (let meshId of Object.keys(element.fragments)) {
+                COLLAPSE.configuration.loop(element.fragments[meshId], tbd);
+                element.fragments[meshId].mesh.position.x = element.fragments[meshId].position.x;
+                element.fragments[meshId].mesh.position.y = element.fragments[meshId].position.y;
+            }
+            tbd.forEach(meshId => {
+                delete(element.fragments[meshId]);
+                scene.remove(scene.getObjectById(meshId));
+            });
         });
-        tbd = [];
     }
 
     renderer.render(scene, camera);
@@ -182,6 +230,8 @@ const imageToMesh = imageWrapper => {
 
     const chunkGeometry = getRectangleGeometry(chunkSize, chunkSize);
 
+    let fragments = [];
+
     for (let y = 0; y < imageWrapper.height; y += chunkSize) {
         for (let x = 0; x < imageWrapper.width; x += chunkSize) {
             const meshOffset = (x * 4) + (y * imageWrapper.width * 4);
@@ -257,17 +307,17 @@ const imageToMesh = imageWrapper => {
             // If the chunk has not been discarded (i.e. it isn't totally transparent)
             // generate a mesh and physics object for it.
             if (material) {
-                const obj = {
-                    mesh: new THREE.Mesh(chunkGeometry, material),
-                    direction: new THREE.Vector2(0, 0),
-                    position: new THREE.Vector2(imageWrapper.position.left + x, window.innerHeight - imageWrapper.position.top - y),
-                    started: false,
-                };
-                const meshId = obj.mesh.id;
-                obj.meshId = meshId;
-                meshes[meshId] = obj;
+                const obj = new COLLAPSE.Fragment(
+                    new THREE.Mesh(chunkGeometry, material),
+                    new THREE.Vector2(
+                        imageWrapper.position.left + x,
+                        window.innerHeight - imageWrapper.position.top - y),
+                    new THREE.Vector2(0, 0)
+                );
+                fragments[obj.meshId] = obj;
                 scene.add(obj.mesh);
             }
         }
     }
+    return new COLLAPSE.Element(fragments);
 };
