@@ -19,7 +19,7 @@
         $(window).load(function() {
             COLLAPSE.configure({
                     chunkSize: 4,
-                    loop: function(obj, tbd) {
+                    loop: function(delta, obj, tbd) {
                         obj.position.x += obj.direction.x;
                         obj.position.y += obj.direction.y;
 

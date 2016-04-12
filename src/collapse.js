@@ -109,23 +109,33 @@ let materials = {};
 let geoms = {};
 let elements = [];
 let hidden = [];
+let lastUpdate;
 
 const render = () => {
     animationFrameId = requestAnimationFrame(render);
 
-    if (COLLAPSE.configuration.loop) {
-        elements.forEach(element => {
-            let tbd = [];
-            for (let meshId of Object.keys(element.fragments)) {
-                COLLAPSE.configuration.loop(element.fragments[meshId], tbd);
-                element.fragments[meshId].mesh.position.x = element.fragments[meshId].position.x;
-                element.fragments[meshId].mesh.position.y = element.fragments[meshId].position.y;
-            }
-            tbd.forEach(meshId => {
-                delete(element.fragments[meshId]);
-                scene.remove(scene.getObjectById(meshId));
+    if (!lastUpdate) {
+        lastUpdate = new Date();
+    } else {
+        const thisUpdate = new Date();
+        const delta = thisUpdate - lastUpdate;
+
+        if (COLLAPSE.configuration.loop) {
+            elements.forEach(element => {
+                let tbd = [];
+                for (let meshId of Object.keys(element.fragments)) {
+                    COLLAPSE.configuration.loop(delta, element.fragments[meshId], tbd);
+                    element.fragments[meshId].mesh.position.x = element.fragments[meshId].position.x;
+                    element.fragments[meshId].mesh.position.y = element.fragments[meshId].position.y;
+                }
+                tbd.forEach(meshId => {
+                    delete(element.fragments[meshId]);
+                    scene.remove(scene.getObjectById(meshId));
+                });
             });
-        });
+        }
+
+        lastUpdate = thisUpdate;
     }
 
     renderer.render(scene, camera);
