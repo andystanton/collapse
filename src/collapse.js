@@ -7,9 +7,11 @@ const COLLAPSE = {
         for (let meshId of Object.keys(meshes)) {
             scene.remove(scene.getObjectById(meshId, true));
         }
+
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
         }
+
         materials = {};
         geoms = {};
         meshes = {};
@@ -17,47 +19,8 @@ const COLLAPSE = {
         // COLLAPSE.configure(COLLAPSE.configuration);
     },
     collapse: element => {
-        const getPosition = element => {
-            const leftPos = element.getBoundingClientRect().left + window.scrollX;
-            const rightPos = element.getBoundingClientRect().right + window.scrollX;
-            const topPos = element.getBoundingClientRect().top + window.scrollY;
-            const bottomPos = element.getBoundingClientRect().bottom + window.scrollY;
-
-            return {
-                left: leftPos,
-                right: rightPos,
-                top: topPos,
-                bottom: bottomPos
-            };
-        };
-
         return domtoimage.toSvg(element)
-            .then(dataUrl => {
-                return new Promise(resolve => {
-                    const image = new Image();
-                    image.src = dataUrl;
-
-                    image.onload = () => {
-                        const svgCanvas = document.createElement('canvas');
-                        svgCanvas.width = element.offsetWidth;
-                        svgCanvas.height = element.offsetWidth;
-                        const ctx = svgCanvas.getContext('2d');
-                        ctx.drawImage(image, 0, 0);
-                        svgCanvas.remove();
-
-                        resolve({
-                            pixels: ctx.getImageData(
-                                0,
-                                0,
-                                element.offsetWidth,
-                                element.offsetHeight).data,
-                            width: element.offsetWidth,
-                            height: element.offsetHeight,
-                            position: getPosition(element)
-                        });
-                    };
-                });
-            })
+            .then(dataUrl => dataToImage(dataUrl, element))
             .then(imageToMesh)
             .then(_ => {
                 element.style.visibility = 'hidden';
@@ -89,21 +52,21 @@ const COLLAPSE = {
     }
 };
 
-var scene;
-var renderer;
-var camera;
-var chunkSize;
-var animationFrameId;
+let scene;
+let renderer;
+let camera;
+let chunkSize;
+let animationFrameId;
 
-var materials = {};
-var geoms = {};
-var meshes = {};
-var hidden = [];
+let materials = {};
+let geoms = {};
+let meshes = {};
+let hidden = [];
 
 const render = () => {
     animationFrameId = requestAnimationFrame(render);
 
-    var tbd = [];
+    let tbd = [];
     if (COLLAPSE.configuration.loop) {
         scene.traverse(node => {
             if (node instanceof THREE.Mesh) {
@@ -123,33 +86,33 @@ const render = () => {
     renderer.render(scene, camera);
 };
 
-const assignUVs = geometry => {
-    geometry.computeBoundingBox();
+const getRectangleGeometry = (w, h) => {
+    const assignUVs = geometry => {
+        geometry.computeBoundingBox();
 
-    const max = geometry.boundingBox.max;
-    const min = geometry.boundingBox.min;
+        const max = geometry.boundingBox.max;
+        const min = geometry.boundingBox.min;
 
-    const offset = new THREE.Vector2(0 - min.x, 0 - min.y);
-    const range = new THREE.Vector2(max.x - min.x, max.y - min.y);
+        const offset = new THREE.Vector2(0 - min.x, 0 - min.y);
+        const range = new THREE.Vector2(max.x - min.x, max.y - min.y);
 
-    geometry.faceVertexUvs[0] = [];
-    const faces = geometry.faces;
+        geometry.faceVertexUvs[0] = [];
+        const faces = geometry.faces;
 
-    for (let i = 0; i < geometry.faces.length; i++) {
-        const v1 = geometry.vertices[faces[i].a];
-        const v2 = geometry.vertices[faces[i].b];
-        const v3 = geometry.vertices[faces[i].c];
+        for (let i = 0; i < geometry.faces.length; i++) {
+            const v1 = geometry.vertices[faces[i].a];
+            const v2 = geometry.vertices[faces[i].b];
+            const v3 = geometry.vertices[faces[i].c];
 
-        geometry.faceVertexUvs[0].push([
-            new THREE.Vector2((v1.x + offset.x) / range.x, (v1.y + offset.y) / range.y),
-            new THREE.Vector2((v2.x + offset.x) / range.x, (v2.y + offset.y) / range.y),
-            new THREE.Vector2((v3.x + offset.x) / range.x, (v3.y + offset.y) / range.y)
-        ]);
-    }
-    geometry.uvsNeedUpdate = true;
-};
+            geometry.faceVertexUvs[0].push([
+                new THREE.Vector2((v1.x + offset.x) / range.x, (v1.y + offset.y) / range.y),
+                new THREE.Vector2((v2.x + offset.x) / range.x, (v2.y + offset.y) / range.y),
+                new THREE.Vector2((v3.x + offset.x) / range.x, (v3.y + offset.y) / range.y)
+            ]);
+        }
+        geometry.uvsNeedUpdate = true;
+    };
 
-const getGeom = (w, h) => {
     const geomName = `${w}x${h}`;
     if (!geoms[geomName]) {
         const rectShape = new THREE.Shape();
@@ -165,10 +128,9 @@ const getGeom = (w, h) => {
 };
 
 const getMaterial = (r, g, b, a) => {
-    const rgbName = `${r},${g},${b}`;
-    const rgbaName = `${rgbName},${a}`;
+    const rgbaName = `${r},${g},${b},${a}`;
     if (!materials[rgbaName]) {
-        var texture = new THREE.DataTexture(Uint8Array.from([r, g, b, a]), 1, 1, THREE.RGBAFormat);
+        const texture = new THREE.DataTexture(Uint8Array.of(r, g, b, a), 1, 1, THREE.RGBAFormat);
         texture.needsUpdate = true;
         materials[rgbaName] = new THREE.MeshBasicMaterial({
             'map': texture,
@@ -178,51 +140,85 @@ const getMaterial = (r, g, b, a) => {
     return materials[rgbaName];
 };
 
+const dataToImage = (dataUrl, element) => new Promise(resolve => {
+    const getPosition = element => ({
+        left: element.getBoundingClientRect().left + window.scrollX,
+        right: element.getBoundingClientRect().right + window.scrollX,
+        top: element.getBoundingClientRect().top + window.scrollY,
+        bottom: element.getBoundingClientRect().bottom + window.scrollY
+    });
+
+    const image = new Image();
+    image.crossOrigin = "Anonymous";
+    image.src = dataUrl;
+
+    image.onload = () => {
+        const svgCanvas = document.createElement('canvas');
+        svgCanvas.width = element.offsetWidth;
+        svgCanvas.height = element.offsetWidth;
+
+        const ctx = svgCanvas.getContext('2d');
+        ctx.drawImage(image, 0, 0);
+
+        svgCanvas.remove();
+
+        resolve({
+            pixels: ctx.getImageData(
+                0,
+                0,
+                element.offsetWidth,
+                element.offsetHeight).data,
+            width: element.offsetWidth,
+            height: element.offsetHeight,
+            position: getPosition(element)
+        });
+    };
+});
+
 const imageToMesh = imageWrapper => {
-    const image = imageWrapper.data;
+    const chunkGeometry = getRectangleGeometry(chunkSize, chunkSize);
+
     for (let y = 0; y < imageWrapper.height; y += chunkSize) {
         for (let x = 0; x < imageWrapper.width; x += chunkSize) {
+            const meshOffset = (x * 4) + (y * imageWrapper.width * 4);
+
+            let material;
+
             if (chunkSize == 1) {
-                const pixelOffset = (x * 4) + (y * imageWrapper.width * 4);
-                if (imageWrapper.pixels[pixelOffset + 3] > 0) {
-                    const mesh = new THREE.Mesh(
-                        getGeom(chunkSize, chunkSize),
-                        getMaterial(
-                            imageWrapper.pixels[pixelOffset + 0],
-                            imageWrapper.pixels[pixelOffset + 1],
-                            imageWrapper.pixels[pixelOffset + 2],
-                            imageWrapper.pixels[pixelOffset + 3]));
-                    mesh.position.x = imageWrapper.position.left + x;
-                    mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
-                    mesh.started = false;
-                    scene.add(mesh);
-                    meshes[mesh.id] = {
-                        direction: new THREE.Vector2(0, 0),
-                        position: new THREE.Vector2(mesh.position.x, mesh.position.y),
-                    };
+                // special case for single pixels - materials can be shared and totally transparent
+                // pixels discarded entirely.
+
+                const alpha = imageWrapper.pixels[meshOffset + 3];
+                if (alpha > 0) {
+                    material = getMaterial(...imageWrapper.pixels.slice(meshOffset, meshOffset + 4));
                 }
             } else {
-                var transparentCount = 0;
-                var invisibleCount = 0;
-                var pixels = [];
+                // general case for chunkSize > 1 - iterate over the pixels in the chunk and generate
+                // a new texture from them. If a chunk contains some transparent pixels, its material
+                // must be transparent, and if all its pixels are transparent it will be discarded.
 
-                for (let iy = chunkSize; iy >= 0; --iy) {
-                    if (y + iy < imageWrapper.height) {
-                        for (let ix = 0; ix < chunkSize; ++ix) {
-                            const pixelOffset = ((x + ix) * 4) + ((y + iy) * imageWrapper.width * 4);
-                            if (x + ix < imageWrapper.width) {
-                                const r = imageWrapper.pixels[pixelOffset + 0];
-                                const g = imageWrapper.pixels[pixelOffset + 1];
-                                const b = imageWrapper.pixels[pixelOffset + 2];
-                                const a = imageWrapper.pixels[pixelOffset + 3];
-                                if (a < 255) {
+                let transparentCount = 0;
+                let invisibleCount = 0;
+                const pixels = [];
+
+                for (let innerY = chunkSize; innerY >= 0; --innerY) {
+                    if (y + innerY < imageWrapper.height) {
+                        for (let innerX = 0; innerX < chunkSize; ++innerX) {
+                            const pixelOffset = meshOffset + (innerX * 4) + (innerY * imageWrapper.width * 4);
+
+                            if (x + innerX < imageWrapper.width) {
+                                const alpha = imageWrapper.pixels[pixelOffset + 3];
+                                if (alpha < 255) {
                                     transparentCount++;
-                                    if (a == 0) {
+                                    if (alpha == 0) {
                                         invisibleCount++;
                                     }
                                 }
-                                pixels.push(r, g, b, a);
+                                pixels.push(...imageWrapper.pixels.slice(pixelOffset, pixelOffset + 4));
                             } else {
+                                // if the right boundary of the image comes before the end of the chunk,
+                                // pad the chunk with transparent pixels so chunk size remains consistent.
+
                                 pixels.push(0, 0, 0, 0);
                                 transparentCount++;
                                 invisibleCount++;
@@ -230,12 +226,16 @@ const imageToMesh = imageWrapper => {
                         }
                     } else {
                         for (let ix = 0; ix < chunkSize; ++ix) {
+                            // if the bottom boundary of the image comes before the end of the row of chunks,
+                            // pad the chunk with transparent pixels so chunk size remains consistent.
+
                             pixels.push(0, 0, 0, 0);
                             transparentCount++;
                             invisibleCount++;
                         }
                     }
                 }
+
                 if (invisibleCount < (chunkSize * chunkSize)) {
                     const texture = new THREE.DataTexture(
                         Uint8Array.from(pixels),
@@ -243,21 +243,27 @@ const imageToMesh = imageWrapper => {
                         chunkSize,
                         THREE.RGBAFormat);
                     texture.needsUpdate = true;
-                    const mesh = new THREE.Mesh(
-                        getGeom(chunkSize, chunkSize),
-                        new THREE.MeshBasicMaterial({
-                            'map': texture,
-                            'transparent': transparentCount > 0
-                        }));
-                    mesh.position.x = imageWrapper.position.left + x;
-                    mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
-                    mesh.started = false;
-                    scene.add(mesh);
-                    meshes[mesh.id] = {
-                        direction: new THREE.Vector2(0, 0),
-                        position: new THREE.Vector2(mesh.position.x, mesh.position.y),
-                    };
+                    material = new THREE.MeshBasicMaterial({
+                        'map': texture,
+                        'transparent': transparentCount > 0
+                    });
                 }
+            }
+
+            // If the chunk has not been discarded (i.e. it isn't totally transparent)
+            // generate a mesh and physics object for it.
+            if (material) {
+                const mesh = new THREE.Mesh(chunkGeometry, material);
+
+                mesh.position.x = imageWrapper.position.left + x;
+                mesh.position.y = window.innerHeight - imageWrapper.position.top - y;
+                mesh.started = false;
+
+                scene.add(mesh);
+                meshes[mesh.id] = {
+                    direction: new THREE.Vector2(0, 0),
+                    position: new THREE.Vector2(mesh.position.x, mesh.position.y),
+                };
             }
         }
     }
