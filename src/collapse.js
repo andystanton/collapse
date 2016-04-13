@@ -124,9 +124,11 @@ const render = () => {
             elements.forEach(element => {
                 let tbd = [];
                 for (let meshId of Object.keys(element.fragments)) {
-                    COLLAPSE.configuration.loop(delta, element.fragments[meshId], tbd);
-                    element.fragments[meshId].mesh.position.x = element.fragments[meshId].position.x;
-                    element.fragments[meshId].mesh.position.y = element.fragments[meshId].position.y;
+                    const obj = element.fragments[meshId];
+                    const mesh = obj.mesh;
+                    COLLAPSE.configuration.loop(delta, obj, tbd);
+                    mesh.position.x = obj.position.x;
+                    mesh.position.y = obj.position.y;
                 }
                 tbd.forEach(meshId => {
                     delete(element.fragments[meshId]);
@@ -195,6 +197,21 @@ const getMaterial = (r, g, b, a) => {
     return materials[rgbaName];
 };
 
+const pixelsToImage = (pixels, element) => {
+    const getPosition = element => ({
+        left: element.getBoundingClientRect().left,
+        right: element.getBoundingClientRect().right,
+        top: element.getBoundingClientRect().top,
+        bottom: element.getBoundingClientRect().bottom,
+    });
+    return {
+        pixels: pixels,
+        width: element.offsetWidth,
+        height: element.offsetHeight,
+        position: getPosition(element),
+    };
+};
+
 const dataToImage = (dataUrl, element) => new Promise(resolve => {
     const getPosition = element => ({
         left: element.getBoundingClientRect().left,
@@ -232,7 +249,9 @@ const imageToMesh = imageWrapper => {
     let chunkSize = COLLAPSE.configuration.chunkSize;
     let elementArea = imageWrapper.width * imageWrapper.height;
 
-    if (elementArea > 80000) {
+    if (elementArea > 160000) {
+        chunkSize = 32;
+    } else if (elementArea > 80000) {
         chunkSize = 16;
     } else if (elementArea > 20000) {
         chunkSize = 8;
