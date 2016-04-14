@@ -268,22 +268,6 @@ const getMaterial = (r, g, b, a) => {
     return materials[rgbaName];
 };
 
-const pixelsToImage = (pixels, element) => {
-    const getPosition = element => ({
-        left: element.getBoundingClientRect().left,
-        right: element.getBoundingClientRect().right,
-        top: element.getBoundingClientRect().top,
-        bottom: element.getBoundingClientRect().bottom,
-    });
-    return {
-        pixels: pixels,
-        width: element.offsetWidth,
-        height: element.offsetHeight,
-        position: getPosition(element),
-        element: element,
-    };
-};
-
 const dataToImage = (dataUrl, element) => new Promise(resolve => {
     const getPosition = element => ({
         left: element.getBoundingClientRect().left,
@@ -333,6 +317,9 @@ const imageToMesh = imageWrapper => {
     const chunkGeometry = getRectangleGeometry(chunkSize, chunkSize);
 
     let fragments = [];
+
+    let left = imageWrapper.width;
+    let right = 0;
 
     for (let y = 0; y < imageWrapper.height; y += chunkSize) {
         for (let x = 0; x < imageWrapper.width; x += chunkSize) {
@@ -393,6 +380,9 @@ const imageToMesh = imageWrapper => {
                 }
 
                 if (invisibleCount < (chunkSize * chunkSize)) {
+                    if (x < left) left = x;
+                    if (x > right) right = x;
+
                     const texture = new THREE.DataTexture(
                         Uint8Array.from(pixels),
                         chunkSize,
@@ -422,10 +412,9 @@ const imageToMesh = imageWrapper => {
         }
     }
 
-    // TODO: compensate for divs that were composed of lots of transparent space e.g. left aligned divs of width 100%
     return new COLLAPSE.Element(
         imageWrapper.element,
-        new THREE.Vector2(imageWrapper.position.left, window.innerHeight - imageWrapper.position.top),
-        new THREE.Vector2(imageWrapper.width, imageWrapper.height),
+        new THREE.Vector2(imageWrapper.position.left + left, window.innerHeight - imageWrapper.position.top),
+        new THREE.Vector2(right - left, imageWrapper.height),
         fragments);
 };

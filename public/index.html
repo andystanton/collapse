@@ -15,10 +15,10 @@
     <script type="text/javascript" src="js/three.min.js"></script>
     <script type="text/javascript" src="js/collapse.js"></script>
     <script type="text/javascript" src="js/bootstrap.min.js"></script>
+
     <script type="text/javascript">
         $(window).load(function() {
             COLLAPSE.configure({
-                    chunkSize: 4,
                     loop: COLLAPSE.SYSTEM.NoGravity,
                 })
                 .then(function() {
@@ -28,14 +28,12 @@
                     });
 
                     $(document).click(function(event) {
-                        var element = event.target;
-                        COLLAPSE.collapse(element)
+                        COLLAPSE.collapse(event.target)
                             .then(COLLAPSE.KICK.AwayFromElement)
                             .catch(function(error) {
                                 console.warn(error);
                             });
-
-                    })
+                    });
                 });
         });
     </script>
