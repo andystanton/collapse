@@ -1,22 +1,17 @@
 const COLLAPSE = {
     reset: () => {
-        // for (let element of hidden) {
-        //     element.style.visibility = 'visible';
-        // }
-        //
-        // for (let meshId of Object.keys(meshes)) {
-        //     scene.remove(scene.getObjectById(meshId, true));
-        // }
-        //
-        // if (animationFrameId) {
-        //     cancelAnimationFrame(animationFrameId);
-        // }
-        //
-        // materials = {};
-        // geoms = {};
-        // meshes = {};
-        // hidden = [];
-        // COLLAPSE.configure(COLLAPSE.configuration);
+        for (let element of elements) {
+            const domElement = element.element;
+            const fragments = element.fragments;
+
+            for (let fragmentId of Object.keys(fragments)) {
+                scene.remove(fragments[fragmentId].mesh);
+            }
+            domElement.style.visibility = 'visible';
+        }
+        elements = [];
+        materials = {};
+        geoms = {};
     },
     SYSTEM: {
         WindowGravity: (delta, element, obj, tbd) => {
@@ -87,7 +82,6 @@ const COLLAPSE = {
                 .then(imageToMesh)
                 .then(collapsed => {
                     element.style.visibility = 'hidden';
-                    hidden.push(element);
                     elements.push(collapsed);
                     return collapsed;
                 });
@@ -146,9 +140,16 @@ const COLLAPSE = {
     },
     Element: class Element {
         constructor(element, position, dimensions, fragments) {
+            this._element = element;
             this._fragments = fragments;
             this._position = position;
             this._dimensions = dimensions;
+        }
+        get element() {
+            return this._element;
+        }
+        set element(element) {
+            this._element = element;
         }
         get fragments() {
             return this._fragments;
@@ -179,7 +180,6 @@ let animationFrameId;
 let materials = {};
 let geoms = {};
 let elements = [];
-let hidden = [];
 let lastUpdate;
 
 const render = () => {
