@@ -145,7 +145,7 @@ const COLLAPSE = {
         }
     },
     Element: class Element {
-        constructor(fragments, position, dimensions) {
+        constructor(element, position, dimensions, fragments) {
             this._fragments = fragments;
             this._position = position;
             this._dimensions = dimensions;
@@ -280,6 +280,7 @@ const pixelsToImage = (pixels, element) => {
         width: element.offsetWidth,
         height: element.offsetHeight,
         position: getPosition(element),
+        element: element,
     };
 };
 
@@ -312,6 +313,7 @@ const dataToImage = (dataUrl, element) => new Promise(resolve => {
             width: element.offsetWidth,
             height: element.offsetHeight,
             position: getPosition(element),
+            element: element,
         });
     };
 });
@@ -422,7 +424,8 @@ const imageToMesh = imageWrapper => {
 
     // TODO: compensate for divs that were composed of lots of transparent space e.g. left aligned divs of width 100%
     return new COLLAPSE.Element(
-        fragments,
+        imageWrapper.element,
         new THREE.Vector2(imageWrapper.position.left, window.innerHeight - imageWrapper.position.top),
-        new THREE.Vector2(imageWrapper.width, imageWrapper.height));
+        new THREE.Vector2(imageWrapper.width, imageWrapper.height),
+        fragments);
 };
