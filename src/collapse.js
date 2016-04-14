@@ -18,16 +18,82 @@ const COLLAPSE = {
         // hidden = [];
         // COLLAPSE.configure(COLLAPSE.configuration);
     },
+    SYSTEM: {
+        WindowGravity: (delta, element, obj, tbd) => {
+            obj.position.x += obj.direction.x;
+            obj.position.y += obj.direction.y;
+
+            obj.direction.y -= 4;
+            obj.direction.x *= 0.95;
+
+            if (obj.position.y < 0) {
+                obj.position.y = 0;
+                obj.direction.x *= 0.9;
+
+                if (Math.abs(obj.direction.y) < 15) {
+                    tbd.push(obj.meshId);
+                } else {
+                    obj.direction.y = -obj.direction.y * 0.4;
+                }
+            }
+
+            if (obj.position.x < 0) {
+                obj.position.x = 0;
+                obj.direction.x = -obj.direction.x;
+            }
+
+            if (obj.position.x >= window.innerWidth) {
+                obj.position.x = window.innerWidth - 1;
+                obj.direction.x = -obj.direction.x;
+            }
+        },
+        NoGravity: (delta, element, obj, tbd) => {
+            obj.position.x += obj.direction.x;
+            obj.position.y += obj.direction.y;
+
+            if (obj.position.y < 0 || obj.position.y > window.innerHeight ||
+                obj.positionx < 0 || obj.position.x > window.innerWidth) {
+                tbd.push(obj.meshId);
+            }
+        },
+    },
+    KICK: {
+        UpAndOut: element => {
+            const fragmentIds = Object.keys(element.fragments);
+            for (let i = 0; i < fragmentIds.length; ++i) {
+                const obj = element.fragments[fragmentIds[i]];
+                obj.direction.y = (Math.random() * 30) + 1;
+                obj.direction.x = (Math.random() * 50) - 25;
+            }
+        },
+        AwayFromElement: element => {
+            const absoluteCentre = element.position;
+            absoluteCentre.x += element.dimensions.x / 2;
+            absoluteCentre.y -= element.dimensions.y / 2;
+
+            const fragmentIds = Object.keys(element.fragments);
+            for (let i = 0; i < fragmentIds.length; ++i) {
+                const obj = element.fragments[fragmentIds[i]];
+                obj.direction.y = obj.position.y - absoluteCentre.y + (Math.random() * 30) - 15;
+                obj.direction.x = obj.position.x - absoluteCentre.x + (Math.random() * 30) - 15;
+                obj.direction.multiplyScalar(0.3);
+            }
+        }
+    },
     collapse: element => {
-        return domtoimage.toSvg(element)
-            .then(dataUrl => dataToImage(dataUrl, element))
-            .then(imageToMesh)
-            .then(collapsed => {
-                element.style.visibility = 'hidden';
-                hidden.push(element);
-                elements.push(collapsed);
-                return collapsed;
-            });
+        if (element.offsetWidth * element.offsetHeight < 300000) {
+            return domtoimage.toSvg(element)
+                .then(dataUrl => dataToImage(dataUrl, element))
+                .then(imageToMesh)
+                .then(collapsed => {
+                    element.style.visibility = 'hidden';
+                    hidden.push(element);
+                    elements.push(collapsed);
+                    return collapsed;
+                });
+        } else {
+            return Promise.reject(`Element ${element.tagName} (${element.offsetWidth}x${element.offsetHeight}) is too large to collapse!`);
+        }
     },
     configure: configuration => {
         COLLAPSE.configuration = configuration;
@@ -44,20 +110,17 @@ const COLLAPSE = {
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.position.z = 5;
 
-        console.log("starting simulation");
-
         document.querySelector('body').appendChild(renderer.domElement);
 
-        render();
+        console.log("Starting Collapse loop");
 
-        return Promise.resolve();
+        return Promise.resolve(render());
     },
     Fragment: class Fragment {
         constructor(mesh, position, direction) {
             this._mesh = mesh;
             this._position = position;
             this._direction = direction;
-            this._started = false;
         }
         get mesh() {
             return this._mesh;
@@ -77,25 +140,33 @@ const COLLAPSE = {
         set direction(direction) {
             this._direction = direction;
         }
-        get started() {
-            return this._started;
-        }
-        set started(started) {
-            this._started = started;
-        }
         get meshId() {
             return this._mesh.id;
         }
     },
     Element: class Element {
-        constructor(fragments) {
+        constructor(fragments, position, dimensions) {
             this._fragments = fragments;
+            this._position = position;
+            this._dimensions = dimensions;
         }
         get fragments() {
             return this._fragments;
         }
         set fragments(fragments) {
             this._fragments = fragments;
+        }
+        get position() {
+            return this._position;
+        }
+        set position(position) {
+            this._position = position;
+        }
+        get dimensions() {
+            return this._dimensions;
+        }
+        set dimensions(dimensions) {
+            this._dimensions = dimensions;
         }
     },
 };
@@ -126,7 +197,7 @@ const render = () => {
                 for (let meshId of Object.keys(element.fragments)) {
                     const obj = element.fragments[meshId];
                     const mesh = obj.mesh;
-                    COLLAPSE.configuration.loop(delta, obj, tbd);
+                    COLLAPSE.configuration.loop(delta, element, obj, tbd);
                     mesh.position.x = obj.position.x;
                     mesh.position.y = obj.position.y;
                 }
@@ -348,5 +419,10 @@ const imageToMesh = imageWrapper => {
             }
         }
     }
-    return new COLLAPSE.Element(fragments);
+
+    // TODO: compensate for divs that were composed of lots of transparent space e.g. left aligned divs of width 100%
+    return new COLLAPSE.Element(
+        fragments,
+        new THREE.Vector2(imageWrapper.position.left, window.innerHeight - imageWrapper.position.top),
+        new THREE.Vector2(imageWrapper.width, imageWrapper.height));
 };
