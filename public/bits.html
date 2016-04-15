@@ -20,7 +20,7 @@
     <script type="text/javascript">
         $(window).load(function() {
             COLLAPSE.configure({
-                    loop: COLLAPSE.SYSTEM.NoGravity,
+                    loop: COLLAPSE.SYSTEM.WindowGravity,
                 })
                 .then(function() {
                     $(document).bind('keydown', 'ctrl+r', function() {
@@ -30,7 +30,7 @@
 
                     $(document).click(function(event) {
                         COLLAPSE.collapse(event.target)
-                            .then(COLLAPSE.KICK.AwayFromElement)
+                            .then(COLLAPSE.KICK.UpAndOut)
                             .catch(function(error) {
                                 console.warn(error);
                             });
