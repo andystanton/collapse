@@ -14,42 +14,73 @@ const COLLAPSE = {
         geoms = {};
     },
     SYSTEM: {
-        WindowGravity: (delta, element, obj, tbd) => {
-            obj.position.x += obj.direction.x;
-            obj.position.y += obj.direction.y;
+        WindowGravity: (sinceStart, delta, element, allFragments, tbd) => {
+            allFragments(obj => {
+                obj.position.x += obj.direction.x;
+                obj.position.y += obj.direction.y;
 
-            obj.direction.y -= 4;
-            obj.direction.x *= 0.95;
+                obj.direction.y -= 4;
+                obj.direction.x *= 0.95;
 
-            if (obj.position.y < 0) {
-                obj.position.y = 0;
-                obj.direction.x *= 0.9;
+                if (obj.position.y < 0) {
+                    obj.position.y = 0;
+                    obj.direction.x *= 0.9;
 
-                if (Math.abs(obj.direction.y) < 15) {
-                    tbd.push(obj.meshId);
-                } else {
-                    obj.direction.y = -obj.direction.y * 0.4;
+                    if (Math.abs(obj.direction.y) < 15) {
+                        tbd.push(obj.meshId);
+                    } else {
+                        obj.direction.y = -obj.direction.y * 0.4;
+                    }
                 }
-            }
 
-            if (obj.position.x < 0) {
-                obj.position.x = 0;
-                obj.direction.x = -obj.direction.x;
-            }
+                if (obj.position.x < 0) {
+                    obj.position.x = 0;
+                    obj.direction.x = -obj.direction.x;
+                }
 
-            if (obj.position.x >= window.innerWidth) {
-                obj.position.x = window.innerWidth - 1;
-                obj.direction.x = -obj.direction.x;
-            }
+                if (obj.position.x >= window.innerWidth) {
+                    obj.position.x = window.innerWidth - 1;
+                    obj.direction.x = -obj.direction.x;
+                }
+            });
         },
-        NoGravity: (delta, element, obj, tbd) => {
-            obj.position.x += obj.direction.x;
-            obj.position.y += obj.direction.y;
+        NoGravity: (sinceStart, delta, element, allFragments, tbd) => {
+            allFragments(obj => {
+                obj.position.x += obj.direction.x;
+                obj.position.y += obj.direction.y;
 
-            if (obj.position.y < 0 || obj.position.y > window.innerHeight ||
-                obj.positionx < 0 || obj.position.x > window.innerWidth) {
-                tbd.push(obj.meshId);
+                if (obj.position.y < 0 || obj.position.y > window.innerHeight ||
+                    obj.positionx < 0 || obj.position.x > window.innerWidth) {
+                    tbd.push(obj.meshId);
+                }
+            });
+        },
+        BigBangBigCrunch: (sinceStart, delta, element, allFragments, tbd) => {
+            if (Object.keys(element.fragments).length == 0) {
+                elements = [];
+                if (element.element.style.visibility == 'hidden') {
+                    element.element.style.visibility = 'visible';
+                }
+                lastUpdate = undefined;
+                startUpdate = undefined;
+                COLLAPSE.configuration.oncomplete();
             }
+
+            allFragments(obj => {
+                if (sinceStart < 3000) {
+                    obj.position.x += obj.direction.x;
+                    obj.position.y += obj.direction.y;
+                } else {
+                    if (Math.abs(obj.position.x - obj.startPosition.x) < 2 && Math.abs(obj.position.y - obj.startPosition.y) < 2) {
+                        obj.position.x = obj.startPosition.x;
+                        obj.position.y = obj.startPosition.y;
+                        tbd.push(obj.meshId);
+                    } else {
+                        obj.position.x -= obj.direction.x;
+                        obj.position.y -= obj.direction.y;
+                    }
+                }
+            });
         },
     },
     KICK: {
@@ -113,6 +144,7 @@ const COLLAPSE = {
     Fragment: class Fragment {
         constructor(mesh, position, direction) {
             this._mesh = mesh;
+            this._startPosition = new THREE.Vector2(position.x, position.y);
             this._position = position;
             this._direction = direction;
         }
@@ -136,6 +168,9 @@ const COLLAPSE = {
         }
         get meshId() {
             return this._mesh.id;
+        }
+        get startPosition() {
+            return this._startPosition;
         }
     },
     Element: class Element {
@@ -181,26 +216,34 @@ let materials = {};
 let geoms = {};
 let elements = [];
 let lastUpdate;
+let startUpdate;
 
 const render = () => {
     animationFrameId = requestAnimationFrame(render);
 
-    if (!lastUpdate) {
+    if (!lastUpdate || !startUpdate) {
         lastUpdate = new Date();
+        startUpdate = new Date();
     } else {
         const thisUpdate = new Date();
         const delta = thisUpdate - lastUpdate;
+        const sinceStart = thisUpdate - startUpdate;
 
         if (COLLAPSE.configuration.loop) {
             elements.forEach(element => {
                 let tbd = [];
-                for (let meshId of Object.keys(element.fragments)) {
-                    const obj = element.fragments[meshId];
-                    const mesh = obj.mesh;
-                    COLLAPSE.configuration.loop(delta, element, obj, tbd);
-                    mesh.position.x = obj.position.x;
-                    mesh.position.y = obj.position.y;
-                }
+                COLLAPSE.configuration.loop(sinceStart, delta, element, (objLoop) => {
+                    for (let meshId of Object.keys(element.fragments)) {
+                        const obj = element.fragments[meshId];
+                        const mesh = obj.mesh;
+
+                        objLoop(obj);
+
+                        mesh.position.x = obj.position.x;
+                        mesh.position.y = obj.position.y;
+                    }
+                }, tbd);
+
                 tbd.forEach(meshId => {
                     delete(element.fragments[meshId]);
                     scene.remove(scene.getObjectById(meshId));
@@ -304,14 +347,17 @@ const dataToImage = (dataUrl, element) => new Promise(resolve => {
 
 const imageToMesh = imageWrapper => {
     let chunkSize = COLLAPSE.configuration.chunkSize;
+    let forceChunkOverride = COLLAPSE.configuration.forceChunkOverride;
     let elementArea = imageWrapper.width * imageWrapper.height;
 
-    if (elementArea > 160000) {
-        chunkSize = 32;
-    } else if (elementArea > 80000) {
-        chunkSize = 16;
-    } else if (elementArea > 20000) {
-        chunkSize = 8;
+    if (!forceChunkOverride) {
+        if (elementArea > 160000) {
+            chunkSize = 32;
+        } else if (elementArea > 80000) {
+            chunkSize = 16;
+        } else if (elementArea > 20000) {
+            chunkSize = 8;
+        }
     }
 
     const chunkGeometry = getRectangleGeometry(chunkSize, chunkSize);
