@@ -22,6 +22,10 @@
             function collapseTarget() {
                 $('#collapse').attr('disabled', true);
                 $('#collapse').off('click');
+
+                startUpdate = undefined;
+                lastUpdate = undefined;
+
                 COLLAPSE.collapse($('#collapse-target')[0])
                     .then(COLLAPSE.KICK.AwayFromElement)
                     .catch(function(error) {
