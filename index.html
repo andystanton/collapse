@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.css" />
+    <link rel="stylesheet" type="text/css" href="css/collapse.css" />
+    <link rel="stylesheet" type="text/css" href="css/intro.css" />
+
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/jquery.hotkeys.js"></script>
+    <script type="text/javascript" src="js/dom-to-image.min.js"></script>
+    <script type="text/javascript" src="js/three.min.js"></script>
+    <script type="text/javascript" src="js/collapse.js"></script>
+    <script type="text/javascript" src="js/bootstrap.min.js"></script>
+
+    <script type="text/javascript">
+        $(window).load(function() {
+            function collapseTarget() {
+                $('#collapse').attr('disabled', true);
+                $('#collapse').off('click');
+
+                startUpdate = undefined;
+                lastUpdate = undefined;
+
+                COLLAPSE.collapse($('#collapse-target')[0])
+                    .then(COLLAPSE.KICK.AwayFromElement)
+                    .catch(function(error) {
+                        console.warn(error);
+                    });
+            }
+
+            COLLAPSE.configure({
+                    loop: COLLAPSE.SYSTEM.BigBangBigCrunch,
+                    oncomplete: function() {
+                      $('#collapse').attr('disabled', false);
+                      $('#collapse').click(collapseTarget);
+                    },
+                    forceChunkOverride: true,
+                    chunkSize: 8,
+                })
+                .then(function() {
+                    $(document).bind('keydown', 'ctrl+r', function() {
+                        console.log('reset');
+                        COLLAPSE.reset();
+                    });
+
+                    $('#collapse').click(collapseTarget);
+                });
+        });
+    </script>
+</head>
+
+<body role="document">
+
+    <div class="site-wrapper">
+
+        <div class="site-wrapper-inner">
+
+            <div class="cover-container">
+
+                <div class="inner cover">
+                    <h1 class="cover-heading">Collapse</h1>
+
+                    <p>DOM -> pixels -> WebGL.</p>
+
+                    <div class="form-group">
+                        <textarea id="collapse-target" class="form-control input-lg" rows="5" placeholder="Enter some text"></textarea>
+                    </div>
+
+                    <br/>
+
+                    <p><a class="btn btn-lg btn-default" role="button" id="collapse">Break things</a></p>
+                </div>
+
+                <div class="mastfoot">
+                    <div class="inner">
+                        <p><a href="https://github.com/andystanton/collapse">Collapse</a>, by <a href="https://andy.stanton.is/">Andy Stanton</a>.</p>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>
