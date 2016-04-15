@@ -56,14 +56,14 @@ const COLLAPSE = {
             });
         },
         BigBangBigCrunch: (sinceStart, delta, element, allFragments, tbd) => {
-            if (Object.keys(element.fragments).length == 0) {
-                elements = [];
-                if (element.element.style.visibility == 'hidden') {
-                    element.element.style.visibility = 'visible';
+            if (Object.keys(element.fragments).length == 0 && elements.includes(element)) {
+                element.element.style.visibility = 'visible';
+                elements = elements.filter(_ => _ != element);
+                if (elements.length == 0) {
+                  lastUpdate = undefined;
+                  startUpdate = undefined;
+                  COLLAPSE.configuration.oncomplete();
                 }
-                lastUpdate = undefined;
-                startUpdate = undefined;
-                COLLAPSE.configuration.oncomplete();
             }
 
             allFragments(obj => {
@@ -353,7 +353,7 @@ const imageToMesh = imageWrapper => {
     if (!forceChunkOverride) {
         if (elementArea > 160000) {
             chunkSize = 32;
-        } else if (elementArea > 80000) {
+        } else if (elementArea > 100000) {
             chunkSize = 16;
         } else if (elementArea > 20000) {
             chunkSize = 8;
