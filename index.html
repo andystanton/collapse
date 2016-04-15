@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Collapse</title>
 
     <link rel="stylesheet" type="text/css" href="css/bootstrap.css" />
     <link rel="stylesheet" type="text/css" href="css/collapse.css" />
@@ -26,21 +27,23 @@
                 startUpdate = undefined;
                 lastUpdate = undefined;
 
-                COLLAPSE.collapse($('#collapse-target')[0])
-                    .then(COLLAPSE.KICK.AwayFromElement)
-                    .catch(function(error) {
-                        console.warn(error);
-                    });
+                Promise.all($('.collapse-target').each(function(i, element) {
+                  COLLAPSE.collapse(element)
+                      .then(COLLAPSE.KICK.AwayFromElement)
+                      .catch(function(error) {
+                          console.warn(error);
+                      });
+                }));
+
             }
 
             COLLAPSE.configure({
                     loop: COLLAPSE.SYSTEM.BigBangBigCrunch,
                     oncomplete: function() {
-                      $('#collapse').attr('disabled', false);
-                      $('#collapse').click(collapseTarget);
+                        $('#collapse').attr('disabled', false);
+                        $('#collapse').click(collapseTarget);
                     },
-                    forceChunkOverride: true,
-                    chunkSize: 8,
+                    chunkSize: 4,
                 })
                 .then(function() {
                     $(document).bind('keydown', 'ctrl+r', function() {
@@ -68,9 +71,16 @@
                     <p>DOM -> pixels -> WebGL.</p>
 
                     <div class="form-group">
-                        <textarea id="collapse-target" class="form-control input-lg" rows="5" placeholder="Enter some text"></textarea>
+                        <textarea class="collapse-target form-control input-lg" rows="3" placeholder="Enter some text"></textarea>
                     </div>
-
+                    <p>
+                        <button type="button" class="btn btn-lg btn-default collapse-target">Default</button>
+                        <button type="button" class="btn btn-lg btn-primary collapse-target">Primary</button>
+                        <button type="button" class="btn btn-lg btn-success collapse-target">Success</button>
+                        <button type="button" class="btn btn-lg btn-info collapse-target">Info</button>
+                        <button type="button" class="btn btn-lg btn-warning collapse-target">Warning</button>
+                        <button type="button" class="btn btn-lg btn-danger collapse-target">Danger</button>
+                    </p>
                     <br/>
 
                     <p><a class="btn btn-lg btn-default" role="button" id="collapse">Break things</a></p>
@@ -78,7 +88,7 @@
 
                 <div class="mastfoot">
                     <div class="inner">
-                        <p><a href="https://github.com/andystanton/collapse">Collapse</a>, by <a href="https://andy.stanton.is/">Andy Stanton</a>.</p>
+                        <p><a href="https://github.com/andystanton/collapse">Collapse</a> by <a href="https://andy.stanton.is/">Andy Stanton</a>.</p>
                     </div>
                 </div>
 
