@@ -120,7 +120,7 @@ var COLLAPSE = {
             }
 
             allFragments(function (obj) {
-                if (sinceStart < 3000) {
+                if (sinceStart < 4000) {
                     obj.position.x += obj.direction.x;
                     obj.position.y += obj.direction.y;
                 } else {
@@ -129,8 +129,8 @@ var COLLAPSE = {
                         obj.position.y = obj.startPosition.y;
                         tbd.push(obj.meshId);
                     } else {
-                        obj.position.x -= obj.direction.x;
-                        obj.position.y -= obj.direction.y;
+                        obj.position.x -= obj.direction.x / 2;
+                        obj.position.y -= obj.direction.y / 2;
                     }
                 }
             });
@@ -153,9 +153,12 @@ var COLLAPSE = {
             var fragmentIds = Object.keys(element.fragments);
             for (var i = 0; i < fragmentIds.length; ++i) {
                 var obj = element.fragments[fragmentIds[i]];
-                obj.direction.y = obj.position.y - absoluteCentre.y + Math.random() * 30 - 15;
-                obj.direction.x = obj.position.x - absoluteCentre.x + Math.random() * 30 - 15;
-                obj.direction.multiplyScalar(0.3);
+                var diff = new THREE.Vector2(absoluteCentre.x, absoluteCentre.y);
+                diff.sub(obj.position);
+                diff.addScaledVector(obj.dimensions, 0.5);
+
+                obj.direction.y += diff.y * (Math.random() * 2 - 1);
+                obj.direction.x += diff.x * (Math.random() * 2 - 1);
             }
         }
     },
@@ -194,13 +197,14 @@ var COLLAPSE = {
         return Promise.resolve(render());
     },
     Fragment: function () {
-        function Fragment(mesh, position, direction) {
+        function Fragment(mesh, position, direction, dimensions) {
             _classCallCheck(this, Fragment);
 
             this._mesh = mesh;
             this._startPosition = new THREE.Vector2(position.x, position.y);
             this._position = position;
             this._direction = direction;
+            this._dimensions = dimensions;
         }
 
         _createClass(Fragment, [{
@@ -226,6 +230,14 @@ var COLLAPSE = {
             },
             set: function set(direction) {
                 this._direction = direction;
+            }
+        }, {
+            key: 'dimensions',
+            get: function get() {
+                return this._dimensions;
+            },
+            set: function set(dimensions) {
+                this._dimensions = dimensions;
             }
         }, {
             key: 'meshId',
@@ -389,9 +401,9 @@ var getRectangleGeometry = function getRectangleGeometry(w, h) {
     if (!geoms[geomName]) {
         var rectShape = new THREE.Shape();
         rectShape.moveTo(0, 0);
-        rectShape.lineTo(0, w);
-        rectShape.lineTo(h, w);
-        rectShape.lineTo(h, 0);
+        rectShape.lineTo(0, h);
+        rectShape.lineTo(w, h);
+        rectShape.lineTo(w, 0);
         rectShape.lineTo(0, 0);
         geoms[geomName] = new THREE.ShapeGeometry(rectShape);
         assignUVs(geoms[geomName]);
@@ -542,12 +554,12 @@ var imageToMesh = function imageToMesh(imageWrapper) {
             // If the chunk has not been discarded (i.e. it isn't totally transparent)
             // generate a mesh and physics object for it.
             if (material) {
-                var obj = new COLLAPSE.Fragment(new THREE.Mesh(chunkGeometry, material), new THREE.Vector2(imageWrapper.position.left + x, window.innerHeight - imageWrapper.position.top - y), new THREE.Vector2(0, 0));
+                var obj = new COLLAPSE.Fragment(new THREE.Mesh(chunkGeometry, material), new THREE.Vector2(imageWrapper.position.left + x, window.innerHeight - imageWrapper.position.top - y - chunkSize), new THREE.Vector2(0, 0), new THREE.Vector2(chunkSize, chunkSize));
                 fragments[obj.meshId] = obj;
                 scene.add(obj.mesh);
             }
         }
     }
 
-    return new COLLAPSE.Element(imageWrapper.element, new THREE.Vector2(imageWrapper.position.left + left, window.innerHeight - imageWrapper.position.top), new THREE.Vector2(right - left, imageWrapper.height), fragments);
+    return new COLLAPSE.Element(imageWrapper.element, new THREE.Vector2(imageWrapper.position.left + left, window.innerHeight - imageWrapper.position.top - imageWrapper.height), new THREE.Vector2(right - left, imageWrapper.height), fragments);
 };
