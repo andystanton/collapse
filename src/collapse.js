@@ -1,3 +1,14 @@
+let scene;
+let renderer;
+let camera;
+let animationFrameId;
+
+let materials = {};
+let geoms = {};
+let elements = [];
+let lastUpdate;
+let startUpdate;
+
 const COLLAPSE = {
     reset: () => {
         for (let element of elements) {
@@ -60,9 +71,9 @@ const COLLAPSE = {
                 element.element.style.visibility = 'visible';
                 elements = elements.filter(_ => _ != element);
                 if (elements.length == 0) {
-                  lastUpdate = undefined;
-                  startUpdate = undefined;
-                  COLLAPSE.configuration.oncomplete();
+                    lastUpdate = undefined;
+                    startUpdate = undefined;
+                    COLLAPSE.configuration.oncomplete();
                 }
             }
 
@@ -216,17 +227,6 @@ const COLLAPSE = {
         }
     },
 };
-
-let scene;
-let renderer;
-let camera;
-let animationFrameId;
-
-let materials = {};
-let geoms = {};
-let elements = [];
-let lastUpdate;
-let startUpdate;
 
 const render = () => {
     animationFrameId = requestAnimationFrame(render);

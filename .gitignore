@@ -4,3 +4,4 @@ public/js
 public/fonts
 public/css/bootstrap.css
 .idea
+.vscode/.*
