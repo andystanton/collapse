@@ -67,7 +67,7 @@ const COLLAPSE = {
             }
 
             allFragments(obj => {
-                if (sinceStart < 3000) {
+                if (sinceStart < 4000) {
                     obj.position.x += obj.direction.x;
                     obj.position.y += obj.direction.y;
                 } else {
@@ -76,8 +76,8 @@ const COLLAPSE = {
                         obj.position.y = obj.startPosition.y;
                         tbd.push(obj.meshId);
                     } else {
-                        obj.position.x -= obj.direction.x;
-                        obj.position.y -= obj.direction.y;
+                        obj.position.x -= obj.direction.x / 2;
+                        obj.position.y -= obj.direction.y / 2;
                     }
                 }
             });
@@ -100,9 +100,12 @@ const COLLAPSE = {
             const fragmentIds = Object.keys(element.fragments);
             for (let i = 0; i < fragmentIds.length; ++i) {
                 const obj = element.fragments[fragmentIds[i]];
-                obj.direction.y = obj.position.y - absoluteCentre.y + (Math.random() * 30) - 15;
-                obj.direction.x = obj.position.x - absoluteCentre.x + (Math.random() * 30) - 15;
-                obj.direction.multiplyScalar(0.3);
+                const diff = new THREE.Vector2(absoluteCentre.x, absoluteCentre.y);
+                diff.sub(obj.position);
+                diff.addScaledVector(obj.dimensions, 0.5);
+
+                obj.direction.y += diff.y * ((Math.random() * 2) - 1);
+                obj.direction.x += diff.x * ((Math.random() * 2) - 1);
             }
         }
     },
@@ -142,11 +145,12 @@ const COLLAPSE = {
         return Promise.resolve(render());
     },
     Fragment: class Fragment {
-        constructor(mesh, position, direction) {
+        constructor(mesh, position, direction, dimensions) {
             this._mesh = mesh;
             this._startPosition = new THREE.Vector2(position.x, position.y);
             this._position = position;
             this._direction = direction;
+            this._dimensions = dimensions;
         }
         get mesh() {
             return this._mesh;
@@ -165,6 +169,12 @@ const COLLAPSE = {
         }
         set direction(direction) {
             this._direction = direction;
+        }
+        get dimensions() {
+            return this._dimensions;
+        }
+        set dimensions(dimensions) {
+            this._dimensions = dimensions;
         }
         get meshId() {
             return this._mesh.id;
@@ -288,9 +298,9 @@ const getRectangleGeometry = (w, h) => {
     if (!geoms[geomName]) {
         const rectShape = new THREE.Shape();
         rectShape.moveTo(0, 0);
-        rectShape.lineTo(0, w);
-        rectShape.lineTo(h, w);
-        rectShape.lineTo(h, 0);
+        rectShape.lineTo(0, h);
+        rectShape.lineTo(w, h);
+        rectShape.lineTo(w, 0);
         rectShape.lineTo(0, 0);
         geoms[geomName] = new THREE.ShapeGeometry(rectShape);
         assignUVs(geoms[geomName]);
@@ -449,9 +459,9 @@ const imageToMesh = imageWrapper => {
                     new THREE.Mesh(chunkGeometry, material),
                     new THREE.Vector2(
                         imageWrapper.position.left + x,
-                        window.innerHeight - imageWrapper.position.top - y),
-                    new THREE.Vector2(0, 0)
-                );
+                        window.innerHeight - imageWrapper.position.top - y - chunkSize),
+                    new THREE.Vector2(0, 0),
+                    new THREE.Vector2(chunkSize, chunkSize));
                 fragments[obj.meshId] = obj;
                 scene.add(obj.mesh);
             }
@@ -460,7 +470,7 @@ const imageToMesh = imageWrapper => {
 
     return new COLLAPSE.Element(
         imageWrapper.element,
-        new THREE.Vector2(imageWrapper.position.left + left, window.innerHeight - imageWrapper.position.top),
+        new THREE.Vector2(imageWrapper.position.left + left, window.innerHeight - imageWrapper.position.top - imageWrapper.height),
         new THREE.Vector2(right - left, imageWrapper.height),
         fragments);
 };
