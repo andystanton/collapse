@@ -20,6 +20,22 @@
 
     <script type="text/javascript">
         $(window).load(function() {
+            var isChromium = window.chrome,
+                winNav = window.navigator,
+                vendorName = winNav.vendor,
+                isOpera = winNav.userAgent.indexOf("OPR") > -1,
+                isIEedge = winNav.userAgent.indexOf("Edge") > -1,
+                isIOSChrome = winNav.userAgent.match("CriOS");
+
+            var isDesktopChrome = isChromium !== null && isChromium !== undefined && vendorName === "Google Inc." && isOpera == false && isIEedge == false;
+
+            if(!isDesktopChrome) {
+               $('#elements').empty();
+               $('#elements').append('<br>');
+               $('#elements').append('<p>Sorry, this experiment works on Chrome desktop only at the moment!</p>');
+            }
+
+
             function collapseTarget() {
                 $('#collapse').attr('disabled', true);
                 $('#collapse').off('click');
@@ -70,20 +86,22 @@
 
                     <p>DOM -> pixels -> WebGL.</p>
 
-                    <div class="form-group">
-                        <textarea class="collapse-target form-control input-lg" rows="3" placeholder="Enter some text"></textarea>
-                    </div>
-                    <p>
-                        <button type="button" class="btn btn-lg btn-default collapse-target">Default</button>
-                        <button type="button" class="btn btn-lg btn-primary collapse-target">Primary</button>
-                        <button type="button" class="btn btn-lg btn-success collapse-target">Success</button>
-                        <button type="button" class="btn btn-lg btn-info collapse-target">Info</button>
-                        <button type="button" class="btn btn-lg btn-warning collapse-target">Warning</button>
-                        <button type="button" class="btn btn-lg btn-danger collapse-target">Danger</button>
-                    </p>
-                    <br/>
+                    <div id="elements">
+                      <div class="form-group">
+                          <textarea class="collapse-target form-control input-lg" rows="3" placeholder="Enter some text"></textarea>
+                      </div>
+                      <p>
+                          <button type="button" class="btn btn-lg btn-default collapse-target">Default</button>
+                          <button type="button" class="btn btn-lg btn-primary collapse-target">Primary</button>
+                          <button type="button" class="btn btn-lg btn-success collapse-target">Success</button>
+                          <button type="button" class="btn btn-lg btn-info collapse-target">Info</button>
+                          <button type="button" class="btn btn-lg btn-warning collapse-target">Warning</button>
+                          <button type="button" class="btn btn-lg btn-danger collapse-target">Danger</button>
+                      </p>
+                      <br/>
 
-                    <p><a class="btn btn-lg btn-default" role="button" id="collapse">Break things</a></p>
+                      <p><a class="btn btn-lg btn-default" role="button" id="collapse">Break things</a></p>
+                    </div>
                 </div>
 
                 <div class="mastfoot">
