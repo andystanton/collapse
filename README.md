@@ -4,8 +4,8 @@ Collapse DOM elements into WebGL representations of their pixels.
 
 ## Requirements
 
-* Latest Chrome or Firefox
-* Node >= 5
+* Modern browser.
+* Recent node for dependency management.
 
 ## Usage
 
@@ -21,5 +21,4 @@ An Express app is now running at [http://localhost:3000/](http://localhost:3000/
 
 ## Notes
 
-* Although the example in this repository uses Express, Collapse does not depend on Node. I used npm and gulp to drive dependency management and build steps.
-* Collapse does not work in Safari at the time of writing owing to html canvases being considered tainted when drawing any images to them, even those that just use data URLs. 
+The example in this repository uses Express, but Collapse does not depend on Node at runtime. npm and gulp are used for dependency management and build steps. 
