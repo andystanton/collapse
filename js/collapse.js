@@ -6,6 +6,17 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+var scene = void 0;
+var renderer = void 0;
+var camera = void 0;
+var animationFrameId = void 0;
+
+var materials = {};
+var geoms = {};
+var elements = [];
+var lastUpdate = void 0;
+var startUpdate = void 0;
+
 var COLLAPSE = {
     reset: function reset() {
         var _iteratorNormalCompletion = true;
@@ -301,17 +312,6 @@ var COLLAPSE = {
     }()
 };
 
-var scene = void 0;
-var renderer = void 0;
-var camera = void 0;
-var animationFrameId = void 0;
-
-var materials = {};
-var geoms = {};
-var elements = [];
-var lastUpdate = void 0;
-var startUpdate = void 0;
-
 var render = function render() {
     animationFrameId = requestAnimationFrame(render);
 
@@ -319,56 +319,54 @@ var render = function render() {
         lastUpdate = new Date();
         startUpdate = new Date();
     } else {
-        (function () {
-            var thisUpdate = new Date();
-            var delta = thisUpdate - lastUpdate;
-            var sinceStart = thisUpdate - startUpdate;
+        var thisUpdate = new Date();
+        var delta = thisUpdate - lastUpdate;
+        var sinceStart = thisUpdate - startUpdate;
 
-            if (COLLAPSE.configuration.loop) {
-                elements.forEach(function (element) {
-                    var tbd = [];
-                    COLLAPSE.configuration.loop(sinceStart, delta, element, function (objLoop) {
-                        var _iteratorNormalCompletion3 = true;
-                        var _didIteratorError3 = false;
-                        var _iteratorError3 = undefined;
+        if (COLLAPSE.configuration.loop) {
+            elements.forEach(function (element) {
+                var tbd = [];
+                COLLAPSE.configuration.loop(sinceStart, delta, element, function (objLoop) {
+                    var _iteratorNormalCompletion3 = true;
+                    var _didIteratorError3 = false;
+                    var _iteratorError3 = undefined;
 
+                    try {
+                        for (var _iterator3 = Object.keys(element.fragments)[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                            var meshId = _step3.value;
+
+                            var obj = element.fragments[meshId];
+                            var mesh = obj.mesh;
+
+                            objLoop(obj);
+
+                            mesh.position.x = obj.position.x;
+                            mesh.position.y = obj.position.y;
+                        }
+                    } catch (err) {
+                        _didIteratorError3 = true;
+                        _iteratorError3 = err;
+                    } finally {
                         try {
-                            for (var _iterator3 = Object.keys(element.fragments)[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-                                var meshId = _step3.value;
-
-                                var obj = element.fragments[meshId];
-                                var mesh = obj.mesh;
-
-                                objLoop(obj);
-
-                                mesh.position.x = obj.position.x;
-                                mesh.position.y = obj.position.y;
+                            if (!_iteratorNormalCompletion3 && _iterator3.return) {
+                                _iterator3.return();
                             }
-                        } catch (err) {
-                            _didIteratorError3 = true;
-                            _iteratorError3 = err;
                         } finally {
-                            try {
-                                if (!_iteratorNormalCompletion3 && _iterator3.return) {
-                                    _iterator3.return();
-                                }
-                            } finally {
-                                if (_didIteratorError3) {
-                                    throw _iteratorError3;
-                                }
+                            if (_didIteratorError3) {
+                                throw _iteratorError3;
                             }
                         }
-                    }, tbd);
+                    }
+                }, tbd);
 
-                    tbd.forEach(function (meshId) {
-                        delete element.fragments[meshId];
-                        scene.remove(scene.getObjectById(meshId));
-                    });
+                tbd.forEach(function (meshId) {
+                    delete element.fragments[meshId];
+                    scene.remove(scene.getObjectById(meshId));
                 });
-            }
+            });
+        }
 
-            lastUpdate = thisUpdate;
-        })();
+        lastUpdate = thisUpdate;
     }
 
     renderer.render(scene, camera);
