@@ -19,7 +19,7 @@
     <script type="text/javascript" src="js/bootstrap.min.js"></script>
 
     <script type="text/javascript">
-        $(window).load(function() {
+        function initCollapse() {
             function collapseTarget() {
                 $('#collapse').attr('disabled', true);
                 $('#collapse').off('click');
@@ -53,6 +53,10 @@
 
                     $('#collapse').click(collapseTarget);
                 });
+        }
+
+        document.addEventListener("DOMContentLoaded", function(event) {
+            initCollapse();
         });
     </script>
 </head>
