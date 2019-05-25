@@ -12,13 +12,13 @@
 
     <script type="text/javascript" src="js/jquery.min.js"></script>
     <script type="text/javascript" src="js/jquery.hotkeys.js"></script>
-    <script type="text/javascript" src="js/dom-to-image.min.js"></script>
+    <script type="text/javascript" src="js/dom-to-image-more.min.js"></script>
     <script type="text/javascript" src="js/three.min.js"></script>
     <script type="text/javascript" src="js/collapse.js"></script>
     <script type="text/javascript" src="js/bootstrap.min.js"></script>
 
     <script type="text/javascript">
-        $(window).load(function() {
+        function initCollapse() {
             COLLAPSE.configure({
                     loop: COLLAPSE.SYSTEM.WindowGravity,
                 })
@@ -36,6 +36,10 @@
                             });
                     });
                 });
+        }
+
+        document.addEventListener("DOMContentLoaded", function(event) {
+            initCollapse();
         });
     </script>
 </head>
