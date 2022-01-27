@@ -18,7 +18,7 @@
     "gulp-util": "^3.0.8",
     "jquery": "^3.4.1",
     "jquery.hotkeys": "^0.1.0",
-    "three": "^0.75.0"
+    "three": "^0.137.0"
   },
   "devDependencies": {
     "babel-preset-es2015": "^6.24.1",
