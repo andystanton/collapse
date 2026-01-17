@@ -13,11 +13,19 @@
     "typecheck": "tsc --noEmit"
   },
   "repository": "https://github.com/andystanton/collapse",
-  "keywords": ["webgl", "animation", "dom", "pixels", "three.js"],
+  "keywords": [
+    "webgl",
+    "animation",
+    "dom",
+    "pixels",
+    "three.js"
+  ],
   "author": "Andy Stanton",
   "license": "MIT",
   "dependencies": {
+    "bootstrap": "^5.3.8",
     "express": "^4.21.0",
+    "html2canvas": "^1.4.1",
     "three": "^0.170.0"
   },
   "devDependencies": {

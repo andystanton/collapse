@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import html2canvas from 'html2canvas';
 
 interface CollapseConfiguration {
   chunkSize?: number;
@@ -356,26 +357,10 @@ const getMaterial = (r: number, g: number, b: number, a: number): THREE.MeshBasi
 };
 
 const elementToDataUrl = async (element: HTMLElement): Promise<string> => {
-  // Simple implementation - in a real app you might want to use html2canvas or similar
-  const canvas = document.createElement('canvas');
-  canvas.width = element.offsetWidth;
-  canvas.height = element.offsetHeight;
-
-  const ctx = canvas.getContext('2d')!;
-
-  // Fill with element's background color or transparent
-  const computedStyle = window.getComputedStyle(element);
-  ctx.fillStyle = computedStyle.backgroundColor || 'transparent';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Add element's text content (simplified)
-  if (element.textContent) {
-    ctx.fillStyle = computedStyle.color || '#000000';
-    ctx.font = `${computedStyle.fontSize} ${computedStyle.fontFamily}`;
-    ctx.fillText(element.textContent, 10, 20);
-  }
-
-  canvas.remove();
+  const canvas = await html2canvas(element, {
+    backgroundColor: null,
+    scale: 1,
+  });
   return canvas.toDataURL();
 };
 
