@@ -33,20 +33,21 @@ body {
     text-shadow: 0 1px 3px rgba(0, 0, 0, .5);
 }
 
-/* Extra markup and styles for table-esque vertical and horizontal centering */
+/* Flexbox vertical centering */
 
 .site-wrapper {
-    display: table;
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    height: 100%;
-    /* For at least Firefox */
     min-height: 100%;
     -webkit-box-shadow: inset 0 0 100px rgba(0, 0, 0, .5);
     box-shadow: inset 0 0 100px rgba(0, 0, 0, .5);
 }
 .site-wrapper-inner {
-    display: table-cell;
-    vertical-align: top;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: center;
 }
 .cover-container {
     margin-right: auto;
@@ -86,23 +87,9 @@ body {
  */
 
 @media (min-width: 768px) {
-    /* Pull out the header and footer */
-    .masthead {
-        position: fixed;
-        top: 0;
-    }
-    .mastfoot {
-        position: fixed;
-        bottom: 0;
-    }
-    /* Start the vertical centering */
-    .site-wrapper-inner {
-        vertical-align: middle;
-    }
     /* Handle the widths */
     .masthead, .mastfoot, .cover-container {
         width: 100%;
-        /* Must be percentage or pixels for horizontal alignment */
     }
 }
 @media (min-width: 992px) {

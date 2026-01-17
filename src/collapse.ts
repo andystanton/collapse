@@ -231,6 +231,13 @@ const configure = (config: CollapseConfiguration): Promise<void> => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.position.z = 5;
 
+  window.addEventListener('resize', () => {
+    camera.right = window.innerWidth;
+    camera.top = window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
   document.querySelector('body')?.appendChild(renderer.domElement);
 
   console.log("Starting Collapse loop");
@@ -245,6 +252,11 @@ const collapse = async (element: HTMLElement): Promise<CollapseElement> => {
     const imageWrapper = await dataToImage(dataUrl, element);
     const collapsed = imageToMesh(imageWrapper);
     element.classList.add('collapse-hidden');
+    // Reset timestamps when first element is added to avoid skipping a frame
+    if (elements.length === 0) {
+      lastUpdate = new Date();
+      startUpdate = new Date();
+    }
     elements.push(collapsed);
     return collapsed;
   } else {
