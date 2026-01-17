@@ -5,3 +5,4 @@ public/fonts
 public/css/bootstrap.css
 .idea
 .vscode/.*
+dist

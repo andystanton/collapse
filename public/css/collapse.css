@@ -11,3 +11,7 @@ canvas {
     pointer-events:none;
     position: fixed;
 }
+
+.collapse-hidden {
+    visibility: hidden;
+}

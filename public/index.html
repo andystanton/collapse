@@ -3,61 +3,57 @@
 
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Collapse</title>
 
-    <link rel="stylesheet" type="text/css" href="css/bootstrap.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="css/collapse.css" />
     <link rel="stylesheet" type="text/css" href="css/intro.css" />
 
-    <script type="text/javascript" src="js/jquery.min.js"></script>
-    <script type="text/javascript" src="js/jquery.hotkeys.js"></script>
-    <script type="text/javascript" src="js/dom-to-image-more.min.js"></script>
-    <script type="text/javascript" src="js/three.min.js"></script>
-    <script type="text/javascript" src="js/collapse.js"></script>
-    <script type="text/javascript" src="js/bootstrap.min.js"></script>
+    <script type="module">
+        import { COLLAPSE } from '@/collapse.ts';
 
-    <script type="text/javascript">
         function initCollapse() {
-            function collapseTarget() {
-                $('#collapse').attr('disabled', true);
-                $('#collapse').off('click');
+            async function collapseTarget() {
+                const collapseBtn = document.getElementById('collapse');
+                collapseBtn.disabled = true;
+                collapseBtn.removeEventListener('click', collapseTarget);
 
-                startUpdate = undefined;
-                lastUpdate = undefined;
+                const targets = document.querySelectorAll('.collapse-target');
+                const promises = Array.from(targets).map(async (element) => {
+                    try {
+                        const collapsed = await COLLAPSE.collapse(element);
+                        COLLAPSE.KICK.AwayFromElement(collapsed);
+                    } catch (error) {
+                        console.warn(error);
+                    }
+                });
 
-                Promise.all($('.collapse-target').each(function(i, element) {
-                  COLLAPSE.collapse(element)
-                      .then(COLLAPSE.KICK.AwayFromElement)
-                      .catch(function(error) {
-                          console.warn(error);
-                      });
-                }));
-
+                await Promise.all(promises);
             }
 
             COLLAPSE.configure({
-                    loop: COLLAPSE.SYSTEM.BigBangBigCrunch,
-                    oncomplete: function() {
-                        $('#collapse').attr('disabled', false);
-                        $('#collapse').click(collapseTarget);
-                    },
-                    chunkSize: 4,
-                })
-                .then(function() {
-                    $(document).bind('keydown', 'ctrl+r', function() {
+                loop: COLLAPSE.SYSTEM.BigBangBigCrunch,
+                oncomplete: function() {
+                    const collapseBtn = document.getElementById('collapse');
+                    collapseBtn.disabled = false;
+                    collapseBtn.addEventListener('click', collapseTarget);
+                },
+                chunkSize: 4,
+            }).then(() => {
+                document.addEventListener('keydown', function(e) {
+                    if (e.ctrlKey && e.key === 'r') {
+                        e.preventDefault();
                         console.log('reset');
                         COLLAPSE.reset();
-                    });
-
-                    $('#collapse').click(collapseTarget);
+                    }
                 });
+
+                document.getElementById('collapse').addEventListener('click', collapseTarget);
+            });
         }
 
-        document.addEventListener("DOMContentLoaded", function(event) {
-            initCollapse();
-        });
+        document.addEventListener("DOMContentLoaded", initCollapse);
     </script>
 </head>
 
@@ -74,17 +70,17 @@
 
                     <p>DOM -> pixels -> WebGL.</p>
 
-                    <div class="form-group">
-                        <textarea class="collapse-target form-control input-lg" rows="3" placeholder="Enter some text"></textarea>
+                    <div class="mb-3">
+                        <textarea class="collapse-target form-control form-control-lg" rows="3" placeholder="Enter some text"></textarea>
                     </div>
-                    <p>
-                        <button type="button" class="btn btn-lg btn-default collapse-target">Default</button>
-                        <button type="button" class="btn btn-lg btn-primary collapse-target">Primary</button>
-                        <button type="button" class="btn btn-lg btn-success collapse-target">Success</button>
-                        <button type="button" class="btn btn-lg btn-info collapse-target">Info</button>
-                        <button type="button" class="btn btn-lg btn-warning collapse-target">Warning</button>
-                        <button type="button" class="btn btn-lg btn-danger collapse-target">Danger</button>
-                    </p>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <button type="button" class="btn btn-default collapse-target">Default</button>
+                        <button type="button" class="btn btn-primary collapse-target">Primary</button>
+                        <button type="button" class="btn btn-success collapse-target">Success</button>
+                        <button type="button" class="btn btn-info collapse-target">Info</button>
+                        <button type="button" class="btn btn-warning collapse-target">Warning</button>
+                        <button type="button" class="btn btn-danger collapse-target">Danger</button>
+                    </div>
                     <br/>
 
                     <p><a class="btn btn-lg btn-default" role="button" id="collapse">Break things</a></p>
