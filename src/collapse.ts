@@ -17,7 +17,7 @@ type LoopFunction = (
 ) => void;
 
 interface ImageWrapper {
-  pixels: Uint8ClampedArray;
+  canvas: HTMLCanvasElement;
   width: number;
   height: number;
   position: {
@@ -34,29 +34,30 @@ let renderer: THREE.WebGLRenderer;
 let camera: THREE.OrthographicCamera;
 let animationFrameId: number;
 
-let materials: Record<string, THREE.MeshBasicMaterial> = {};
-let geometries: Record<string, THREE.ShapeGeometry> = {};
 let elements: CollapseElement[] = [];
 let lastUpdate: Date | undefined;
 let startUpdate: Date | undefined;
 
+// Shared geometry for all chunks - a unit plane
+let sharedGeometry: THREE.PlaneGeometry;
+
 class Fragment {
-  private _mesh: THREE.Mesh;
+  private _index: number;
   private _startPosition: THREE.Vector2;
   private _position: THREE.Vector2;
   private _direction: THREE.Vector2;
   private _dimensions: THREE.Vector2;
 
-  constructor(mesh: THREE.Mesh, position: THREE.Vector2, direction: THREE.Vector2, dimensions: THREE.Vector2) {
-    this._mesh = mesh;
+  constructor(index: number, position: THREE.Vector2, direction: THREE.Vector2, dimensions: THREE.Vector2) {
+    this._index = index;
     this._startPosition = new THREE.Vector2(position.x, position.y);
     this._position = position;
     this._direction = direction;
     this._dimensions = dimensions;
   }
 
-  get mesh(): THREE.Mesh { return this._mesh; }
-  set mesh(mesh: THREE.Mesh) { this._mesh = mesh; }
+  get index(): number { return this._index; }
+  get meshId(): number { return this._index; } // Compatibility
 
   get position(): THREE.Vector2 { return this._position; }
   set position(position: THREE.Vector2) { this._position = position; }
@@ -67,34 +68,75 @@ class Fragment {
   get dimensions(): THREE.Vector2 { return this._dimensions; }
   set dimensions(dimensions: THREE.Vector2) { this._dimensions = dimensions; }
 
-  get meshId(): number { return this._mesh.id; }
   get startPosition(): THREE.Vector2 { return this._startPosition; }
 }
 
 class CollapseElement {
   private _element: HTMLElement;
-  private _fragments: Record<number, Fragment>;
+  private _fragments: Map<number, Fragment>;
+  private _instancedMesh: THREE.InstancedMesh;
   private _position: THREE.Vector2;
   private _dimensions: THREE.Vector2;
+  private _dummy: THREE.Object3D;
 
-  constructor(element: HTMLElement, position: THREE.Vector2, dimensions: THREE.Vector2, fragments: Record<number, Fragment>) {
+  constructor(
+    element: HTMLElement,
+    position: THREE.Vector2,
+    dimensions: THREE.Vector2,
+    fragments: Map<number, Fragment>,
+    instancedMesh: THREE.InstancedMesh
+  ) {
     this._element = element;
     this._fragments = fragments;
+    this._instancedMesh = instancedMesh;
     this._position = position;
     this._dimensions = dimensions;
+    this._dummy = new THREE.Object3D();
   }
 
   get element(): HTMLElement { return this._element; }
-  set element(element: HTMLElement) { this._element = element; }
+  get instancedMesh(): THREE.InstancedMesh { return this._instancedMesh; }
 
-  get fragments(): Record<number, Fragment> { return this._fragments; }
-  set fragments(fragments: Record<number, Fragment>) { this._fragments = fragments; }
+  get fragments(): Record<number, Fragment> {
+    // Return as Record for compatibility
+    const record: Record<number, Fragment> = {};
+    this._fragments.forEach((frag, key) => {
+      record[key] = frag;
+    });
+    return record;
+  }
+
+  get fragmentsMap(): Map<number, Fragment> { return this._fragments; }
 
   get position(): THREE.Vector2 { return this._position; }
   set position(position: THREE.Vector2) { this._position = position; }
 
   get dimensions(): THREE.Vector2 { return this._dimensions; }
   set dimensions(dimensions: THREE.Vector2) { this._dimensions = dimensions; }
+
+  updateInstanceMatrix(fragment: Fragment): void {
+    this._dummy.position.set(
+      fragment.position.x + fragment.dimensions.x / 2,
+      fragment.position.y + fragment.dimensions.y / 2,
+      0
+    );
+    this._dummy.scale.set(fragment.dimensions.x, fragment.dimensions.y, 1);
+    this._dummy.updateMatrix();
+    this._instancedMesh.setMatrixAt(fragment.index, this._dummy.matrix);
+    this._instancedMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  hideInstance(index: number): void {
+    this._dummy.scale.set(0, 0, 0);
+    this._dummy.updateMatrix();
+    this._instancedMesh.setMatrixAt(index, this._dummy.matrix);
+    this._instancedMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  removeFragment(index: number): void {
+    this.hideInstance(index);
+    this._fragments.delete(index);
+  }
 }
 
 const SYSTEMS = {
@@ -142,12 +184,24 @@ const SYSTEMS = {
   },
 
   BigBangBigCrunch: (sinceStart: number, delta: number, element: CollapseElement, allFragments: (callback: (fragment: Fragment) => void) => void, tbd: number[]) => {
-    if (Object.keys(element.fragments).length === 0 && elements.includes(element)) {
+    if (element.fragmentsMap.size === 0 && elements.includes(element)) {
+      // Clean up the instancedMesh
+      scene.remove(element.instancedMesh);
+      element.instancedMesh.geometry.dispose();
+      (element.instancedMesh.material as THREE.Material).dispose();
+
       element.element.classList.remove('collapse-hidden');
       // Force repaint to fix textarea rendering bug
       if (element.element instanceof HTMLElement) {
-        element.element.focus();
-        element.element.blur();
+        const el = element.element;
+        // Use setTimeout to ensure repaint happens in a new task after render completes
+        setTimeout(() => {
+          el.style.display = 'none';
+          void el.offsetHeight; // Force reflow
+          el.style.display = '';
+          el.focus();
+          el.blur();
+        }, 0);
       }
       elements = elements.filter(el => el !== element);
       if (elements.length === 0) {
@@ -177,12 +231,10 @@ const SYSTEMS = {
 
 const KICKS = {
   UpAndOut: (element: CollapseElement) => {
-    const fragmentIds = Object.keys(element.fragments);
-    for (let i = 0; i < fragmentIds.length; ++i) {
-      const obj = element.fragments[parseInt(fragmentIds[i])];
+    element.fragmentsMap.forEach(obj => {
       obj.direction.y = (Math.random() * 30) + 1;
       obj.direction.x = (Math.random() * 50) - 25;
-    }
+    });
   },
 
   AwayFromElement: (element: CollapseElement) => {
@@ -190,16 +242,14 @@ const KICKS = {
     absoluteCentre.x += element.dimensions.x / 2;
     absoluteCentre.y -= element.dimensions.y / 2;
 
-    const fragmentIds = Object.keys(element.fragments);
-    for (let i = 0; i < fragmentIds.length; ++i) {
-      const obj = element.fragments[parseInt(fragmentIds[i])];
+    element.fragmentsMap.forEach(obj => {
       const diff = new THREE.Vector2(absoluteCentre.x, absoluteCentre.y);
       diff.sub(obj.position);
       diff.addScaledVector(obj.dimensions, 0.5);
 
       obj.direction.y += diff.y * ((Math.random() * 2) - 1);
       obj.direction.x += diff.x * ((Math.random() * 2) - 1);
-    }
+    });
   }
 };
 
@@ -207,17 +257,12 @@ let configuration: CollapseConfiguration | undefined;
 
 const reset = (): void => {
   for (const element of elements) {
-    const domElement = element.element;
-    const fragments = element.fragments;
-
-    for (const fragmentId of Object.keys(fragments)) {
-      scene.remove(fragments[parseInt(fragmentId)].mesh);
-    }
-    domElement.classList.remove('collapse-hidden');
+    scene.remove(element.instancedMesh);
+    element.instancedMesh.geometry.dispose();
+    (element.instancedMesh.material as THREE.Material).dispose();
+    element.element.classList.remove('collapse-hidden');
   }
   elements = [];
-  materials = {};
-  geometries = {};
 };
 
 const configure = (config: CollapseConfiguration): Promise<void> => {
@@ -227,6 +272,9 @@ const configure = (config: CollapseConfiguration): Promise<void> => {
   scene = new THREE.Scene();
   renderer = new THREE.WebGLRenderer({ alpha: true });
   camera = new THREE.OrthographicCamera(0, window.innerWidth, window.innerHeight, 0, 1, 1000);
+
+  // Create shared unit plane geometry (1x1, will be scaled per instance)
+  sharedGeometry = new THREE.PlaneGeometry(1, 1);
 
   scene.add(camera);
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -249,9 +297,8 @@ const configure = (config: CollapseConfiguration): Promise<void> => {
 
 const collapse = async (element: HTMLElement): Promise<CollapseElement> => {
   if (element.offsetWidth * element.offsetHeight < 300000) {
-    const dataUrl = await elementToDataUrl(element);
-    const imageWrapper = await dataToImage(dataUrl, element);
-    const collapsed = imageToMesh(imageWrapper);
+    const imageWrapper = await elementToImage(element);
+    const collapsed = imageToInstancedMesh(imageWrapper);
     element.classList.add('collapse-hidden');
     // Reset timestamps when first element is added to avoid skipping a frame
     if (elements.length === 0) {
@@ -280,23 +327,14 @@ const render = (): void => {
       elements.forEach(element => {
         const tbd: number[] = [];
         configuration!.loop!(sinceStart, delta, element, (objLoop) => {
-          for (const meshId of Object.keys(element.fragments)) {
-            const obj = element.fragments[parseInt(meshId)];
-            const mesh = obj.mesh;
-
+          element.fragmentsMap.forEach(obj => {
             objLoop(obj);
-
-            mesh.position.x = obj.position.x;
-            mesh.position.y = obj.position.y;
-          }
+            element.updateInstanceMatrix(obj);
+          });
         }, tbd);
 
-        tbd.forEach(meshId => {
-          delete element.fragments[meshId];
-          const objectToRemove = scene.getObjectById(meshId);
-          if (objectToRemove) {
-            scene.remove(objectToRemove);
-          }
+        tbd.forEach(index => {
+          element.removeFragment(index);
         });
       });
     }
@@ -307,97 +345,66 @@ const render = (): void => {
   renderer.render(scene, camera);
 };
 
-const getRectangleGeometry = (w: number, h: number): THREE.ShapeGeometry => {
-  const geomName = `${w}x${h}`;
-  if (!geometries[geomName]) {
-    const rectShape = new THREE.Shape();
-    rectShape.moveTo(0, 0);
-    rectShape.lineTo(0, h);
-    rectShape.lineTo(w, h);
-    rectShape.lineTo(w, 0);
-    rectShape.lineTo(0, 0);
+// Custom shader material for instanced UV mapping
+const createInstancedMaterial = (texture: THREE.Texture, chunkSize: number, imageWidth: number, imageHeight: number): THREE.ShaderMaterial => {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: texture },
+      chunkSize: { value: chunkSize },
+      imageSize: { value: new THREE.Vector2(imageWidth, imageHeight) },
+    },
+    vertexShader: `
+      attribute vec2 uvOffset;
+      varying vec2 vUv;
+      uniform float chunkSize;
+      uniform vec2 imageSize;
 
-    const geometry = new THREE.ShapeGeometry(rectShape);
+      void main() {
+        // Calculate UV based on chunk position
+        vUv = uvOffset + uv * (chunkSize / imageSize);
 
-    // Assign UVs
-    geometry.computeBoundingBox();
-    const max = geometry.boundingBox!.max;
-    const min = geometry.boundingBox!.min;
+        vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D map;
+      varying vec2 vUv;
 
-    const offset = new THREE.Vector2(0 - min.x, 0 - min.y);
-    const range = new THREE.Vector2(max.x - min.x, max.y - min.y);
-
-    const uvs: THREE.Vector2[] = [];
-    const positions = geometry.attributes.position;
-
-    for (let i = 0; i < positions.count; i++) {
-      const x = positions.getX(i);
-      const y = positions.getY(i);
-      uvs.push(new THREE.Vector2((x + offset.x) / range.x, (y + offset.y) / range.y));
-    }
-
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs.flatMap(uv => [uv.x, uv.y]), 2));
-
-    geometries[geomName] = geometry;
-  }
-  return geometries[geomName];
+      void main() {
+        vec4 texColor = texture2D(map, vUv);
+        if (texColor.a < 0.01) discard;
+        gl_FragColor = texColor;
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+  });
 };
 
-const getMaterial = (r: number, g: number, b: number, a: number): THREE.MeshBasicMaterial => {
-  const rgbaName = `${r},${g},${b},${a}`;
-  if (!materials[rgbaName]) {
-    const texture = new THREE.DataTexture(Uint8Array.of(r, g, b, a), 1, 1, THREE.RGBAFormat);
-    texture.needsUpdate = true;
-    materials[rgbaName] = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: a > 0
-    });
-  }
-  return materials[rgbaName];
-};
-
-const elementToDataUrl = async (element: HTMLElement): Promise<string> => {
+const elementToImage = async (element: HTMLElement): Promise<ImageWrapper> => {
   const canvas = await html2canvas(element, {
     backgroundColor: null,
     scale: 1,
   });
-  return canvas.toDataURL();
-};
 
-const dataToImage = (dataUrl: string, element: HTMLElement): Promise<ImageWrapper> => {
-  return new Promise(resolve => {
-    const getPosition = (el: HTMLElement) => ({
-      left: el.getBoundingClientRect().left,
-      right: el.getBoundingClientRect().right,
-      top: el.getBoundingClientRect().top,
-      bottom: el.getBoundingClientRect().bottom,
-    });
-
-    const image = new Image();
-    image.crossOrigin = "Anonymous";
-    image.src = dataUrl;
-
-    image.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = element.offsetWidth;
-      canvas.height = element.offsetHeight;
-
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(image, 0, 0);
-
-      canvas.remove();
-      resolve({
-        pixels: ctx.getImageData(0, 0, element.offsetWidth, element.offsetHeight).data,
-        width: element.offsetWidth,
-        height: element.offsetHeight,
-        position: getPosition(element),
-        element: element,
-      });
-    };
+  const getPosition = (el: HTMLElement) => ({
+    left: el.getBoundingClientRect().left,
+    right: el.getBoundingClientRect().right,
+    top: el.getBoundingClientRect().top,
+    bottom: el.getBoundingClientRect().bottom,
   });
+
+  return {
+    canvas,
+    width: element.offsetWidth,
+    height: element.offsetHeight,
+    position: getPosition(element),
+    element: element,
+  };
 };
 
-const imageToMesh = (imageWrapper: ImageWrapper): CollapseElement => {
+const imageToInstancedMesh = (imageWrapper: ImageWrapper): CollapseElement => {
   let chunkSize = configuration?.chunkSize ?? 4;
   const forceChunkOverride = configuration?.forceChunkOverride;
   const elementArea = imageWrapper.width * imageWrapper.height;
@@ -412,106 +419,98 @@ const imageToMesh = (imageWrapper: ImageWrapper): CollapseElement => {
     }
   }
 
-  const chunkGeometry = getRectangleGeometry(chunkSize, chunkSize);
-  const fragments: Record<number, Fragment> = {};
+  // Calculate number of chunks
+  const chunksX = Math.ceil(imageWrapper.width / chunkSize);
+  const chunksY = Math.ceil(imageWrapper.height / chunkSize);
+  const totalChunks = chunksX * chunksY;
 
+  // Create texture from canvas
+  const texture = new THREE.CanvasTexture(imageWrapper.canvas);
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+
+  // Create instanced material
+  const material = createInstancedMaterial(texture, chunkSize, imageWrapper.width, imageWrapper.height);
+
+  // Create instanced mesh
+  const instancedMesh = new THREE.InstancedMesh(sharedGeometry, material, totalChunks);
+
+  // Create UV offset attribute
+  const uvOffsets = new Float32Array(totalChunks * 2);
+
+  const fragments = new Map<number, Fragment>();
+  const dummy = new THREE.Object3D();
+
+  let index = 0;
   let left = imageWrapper.width;
   let right = 0;
 
+  // Get pixel data for alpha checking
+  const ctx = imageWrapper.canvas.getContext('2d')!;
+  const imageData = ctx.getImageData(0, 0, imageWrapper.width, imageWrapper.height);
+  const pixels = imageData.data;
+
   for (let y = 0; y < imageWrapper.height; y += chunkSize) {
     for (let x = 0; x < imageWrapper.width; x += chunkSize) {
-      const meshOffset = (x * 4) + (y * imageWrapper.width * 4);
-      let material: THREE.MeshBasicMaterial | undefined;
-
-      if (chunkSize === 1) {
-        const alpha = imageWrapper.pixels[meshOffset + 3];
-        if (alpha > 0) {
-          material = getMaterial(
-            imageWrapper.pixels[meshOffset],
-            imageWrapper.pixels[meshOffset + 1],
-            imageWrapper.pixels[meshOffset + 2],
-            imageWrapper.pixels[meshOffset + 3]
-          );
-        }
-      } else {
-        let transparentCount = 0;
-        let invisibleCount = 0;
-        const pixels: number[] = [];
-
-        for (let innerY = chunkSize; innerY >= 0; --innerY) {
-          if (y + innerY < imageWrapper.height) {
-            for (let innerX = 0; innerX < chunkSize; ++innerX) {
-              const pixelOffset = meshOffset + (innerX * 4) + (innerY * imageWrapper.width * 4);
-
-              if (x + innerX < imageWrapper.width) {
-                const alpha = imageWrapper.pixels[pixelOffset + 3];
-                if (alpha < 255) {
-                  transparentCount++;
-                  if (alpha === 0) {
-                    invisibleCount++;
-                  }
-                }
-                pixels.push(
-                  imageWrapper.pixels[pixelOffset],
-                  imageWrapper.pixels[pixelOffset + 1],
-                  imageWrapper.pixels[pixelOffset + 2],
-                  imageWrapper.pixels[pixelOffset + 3]
-                );
-              } else {
-                pixels.push(0, 0, 0, 0);
-                transparentCount++;
-                invisibleCount++;
-              }
-            }
-          } else {
-            for (let ix = 0; ix < chunkSize; ++ix) {
-              pixels.push(0, 0, 0, 0);
-              transparentCount++;
-              invisibleCount++;
-            }
+      // Check if chunk has any visible pixels
+      let hasVisiblePixels = false;
+      for (let innerY = 0; innerY < chunkSize && y + innerY < imageWrapper.height; innerY++) {
+        for (let innerX = 0; innerX < chunkSize && x + innerX < imageWrapper.width; innerX++) {
+          const pixelOffset = ((y + innerY) * imageWrapper.width + (x + innerX)) * 4;
+          if (pixels[pixelOffset + 3] > 0) {
+            hasVisiblePixels = true;
+            break;
           }
         }
-
-        if (invisibleCount < (chunkSize * chunkSize)) {
-          if (x < left) left = x;
-          if (x > right) right = x;
-
-          const texture = new THREE.DataTexture(
-            Uint8Array.from(pixels),
-            chunkSize,
-            chunkSize,
-            THREE.RGBAFormat
-          );
-          texture.needsUpdate = true;
-          material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: transparentCount > 0
-          });
-        }
+        if (hasVisiblePixels) break;
       }
 
-      if (material) {
-        const mesh = new THREE.Mesh(chunkGeometry, material);
+      if (hasVisiblePixels) {
+        if (x < left) left = x;
+        if (x > right) right = x;
+
+        const posX = imageWrapper.position.left + x;
+        const posY = window.innerHeight - imageWrapper.position.top - y - chunkSize;
+
+        // Set UV offset (normalized coordinates)
+        uvOffsets[index * 2] = x / imageWrapper.width;
+        uvOffsets[index * 2 + 1] = 1 - (y + chunkSize) / imageWrapper.height;
+
+        // Set instance matrix
+        dummy.position.set(posX + chunkSize / 2, posY + chunkSize / 2, 0);
+        dummy.scale.set(chunkSize, chunkSize, 1);
+        dummy.updateMatrix();
+        instancedMesh.setMatrixAt(index, dummy.matrix);
+
         const fragment = new Fragment(
-          mesh,
-          new THREE.Vector2(
-            imageWrapper.position.left + x,
-            window.innerHeight - imageWrapper.position.top - y - chunkSize
-          ),
+          index,
+          new THREE.Vector2(posX, posY),
           new THREE.Vector2(0, 0),
           new THREE.Vector2(chunkSize, chunkSize)
         );
-        fragments[fragment.meshId] = fragment;
-        scene.add(mesh);
+        fragments.set(index, fragment);
+        index++;
       }
     }
   }
+
+  // Resize arrays if we skipped some chunks (transparent ones)
+  instancedMesh.count = index;
+
+  // Add UV offsets as instance attribute
+  const geometry = sharedGeometry.clone();
+  geometry.setAttribute('uvOffset', new THREE.InstancedBufferAttribute(uvOffsets.slice(0, index * 2), 2));
+  instancedMesh.geometry = geometry;
+
+  instancedMesh.instanceMatrix.needsUpdate = true;
+  scene.add(instancedMesh);
 
   return new CollapseElement(
     imageWrapper.element,
     new THREE.Vector2(imageWrapper.position.left + left, window.innerHeight - imageWrapper.position.top - imageWrapper.height),
     new THREE.Vector2(right - left, imageWrapper.height),
-    fragments
+    fragments,
+    instancedMesh
   );
 };
 
